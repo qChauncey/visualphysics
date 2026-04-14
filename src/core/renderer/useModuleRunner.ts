@@ -11,13 +11,22 @@ import type { PhysicsModule, Params } from '@/types/physics'
 export function useModuleRunner(
   mod: PhysicsModule | null,
   canvasRef: React.RefObject<HTMLCanvasElement | null>,
-  params: Params
+  params: Params,
+  /** Live-updated view state (pan/zoom/mouse) — merged into params each frame without React re-renders */
+  viewRef?: React.MutableRefObject<Params>,
 ) {
-  const stateRef   = useRef<unknown>(null)
-  const paramsRef  = useRef<Params>(params)
-  const rafRef     = useRef<number>(0)
+  const stateRef    = useRef<unknown>(null)
+  const paramsRef   = useRef<Params>(params)
+  const runningRef  = useRef(true)
+  const rafRef      = useRef<number>(0)
   const lastTimeRef = useRef<number>(0)
-  const [running, setRunning] = useState(true)
+  const [running, setRunningState] = useState(true)
+
+  // Wrap setRunning to also update the ref (avoids stale closure in the loop)
+  const setRunning = useCallback((v: boolean) => {
+    runningRef.current = v
+    setRunningState(v)
+  }, [])
 
   // Keep params ref fresh without restarting the loop
   useEffect(() => { paramsRef.current = params }, [params])
@@ -42,10 +51,15 @@ export function useModuleRunner(
       const dt = Math.min((time - lastTimeRef.current) / 1000, 0.05)
       lastTimeRef.current = time
 
-      if (running) {
-        stateRef.current = mod.tick(stateRef.current as never, dt, paramsRef.current)
+      // Merge view state (pan/zoom/mouse) without triggering React renders
+      const allParams: Params = viewRef
+        ? { ...paramsRef.current, ...viewRef.current }
+        : paramsRef.current
+
+      if (runningRef.current) {
+        stateRef.current = mod.tick(stateRef.current as never, dt, allParams)
       }
-      mod.render(stateRef.current as never, canvas, paramsRef.current)
+      mod.render(stateRef.current as never, canvas, allParams)
       rafRef.current = requestAnimationFrame(loop)
     }
 

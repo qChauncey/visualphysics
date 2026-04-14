@@ -2,9 +2,10 @@
 // ─────────────────────────────────────────────
 //  <ModuleViewer>
 //  Wraps any PhysicsModule: canvas + auto-generated controls
+//  Mouse: drag to pan · scroll to zoom · double-click to reset
 // ─────────────────────────────────────────────
 
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import type { PhysicsModule, Params, ControlDefinition } from '@/types/physics'
 import { useModuleRunner } from '@/core/renderer/useModuleRunner'
 
@@ -22,7 +23,119 @@ export default function ModuleViewer({ mod }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const controls  = mod.getControls()
   const [params, setParams] = useState<Params>(() => buildDefaultParams(controls))
-  const { running, setRunning, reset } = useModuleRunner(mod, canvasRef, params)
+
+  // ── View state: pan / zoom / mouse ─────────────────────────────────────────
+  // Ref (not state) so mouse-move updates skip React re-renders entirely
+  const viewRef    = useRef<Params>({ _panX: 0, _panY: 0, _zoom: 1, _mouseX: -1, _mouseY: -1 })
+  const isDragging = useRef(false)
+  const dragStart  = useRef({ clientX: 0, clientY: 0, panX: 0, panY: 0, dpr: 1 })
+
+  const { running, setRunning, reset } = useModuleRunner(mod, canvasRef, params, viewRef)
+
+  // Reset view whenever the module changes
+  useEffect(() => {
+    viewRef.current    = { _panX: 0, _panY: 0, _zoom: 1, _mouseX: -1, _mouseY: -1 }
+    isDragging.current = false
+  }, [mod])
+
+  // ── Canvas mouse / wheel events ────────────────────────────────────────────
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    canvas.style.cursor = 'crosshair'
+
+    /** Convert CSS-pixel client coords → canvas pixel coords (accounts for DPR) */
+    const toCanvas = (clientX: number, clientY: number) => {
+      const rect = canvas.getBoundingClientRect()
+      const dpr  = canvas.width / rect.width
+      return { x: (clientX - rect.left) * dpr, y: (clientY - rect.top) * dpr, dpr }
+    }
+
+    const onMouseMove = (e: MouseEvent) => {
+      const { x, y } = toCanvas(e.clientX, e.clientY)
+      viewRef.current._mouseX = x
+      viewRef.current._mouseY = y
+      if (isDragging.current) {
+        const { dpr, clientX, clientY, panX, panY } = dragStart.current
+        viewRef.current._panX = panX + (e.clientX - clientX) * dpr
+        viewRef.current._panY = panY + (e.clientY - clientY) * dpr
+      }
+    }
+
+    const onMouseDown = (e: MouseEvent) => {
+      const { dpr } = toCanvas(e.clientX, e.clientY)
+      isDragging.current = true
+      dragStart.current  = {
+        clientX: e.clientX,
+        clientY: e.clientY,
+        panX: viewRef.current._panX as number,
+        panY: viewRef.current._panY as number,
+        dpr,
+      }
+      canvas.style.cursor = 'grabbing'
+    }
+
+    const onMouseUp = () => {
+      isDragging.current  = false
+      canvas.style.cursor = 'crosshair'
+    }
+
+    const onMouseLeave = () => {
+      isDragging.current      = false
+      viewRef.current._mouseX = -1
+      viewRef.current._mouseY = -1
+      canvas.style.cursor     = 'crosshair'
+    }
+
+    const onDblClick = () => {
+      viewRef.current._panX = 0
+      viewRef.current._panY = 0
+      viewRef.current._zoom = 1
+    }
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const factor  = e.deltaY < 0 ? 1.12 : 1 / 1.12
+      const oldZoom = viewRef.current._zoom as number
+      const newZoom = Math.max(0.3, Math.min(12, oldZoom * factor))
+
+      // Zoom centred on the mouse cursor so the point under the cursor stays fixed
+      const { x: mx, y: my } = toCanvas(e.clientX, e.clientY)
+      const base    = Math.min(canvas.width, canvas.height) * 0.88
+      const oldSz   = base * oldZoom
+      const newSz   = base * newZoom
+      const oldPanX = viewRef.current._panX as number
+      const oldPanY = viewRef.current._panY as number
+      const oldOx   = (canvas.width  - oldSz) / 2 + oldPanX
+      const oldOy   = (canvas.height - oldSz) / 2 + oldPanY
+      const fracX   = (mx - oldOx) / oldSz
+      const fracY   = (my - oldOy) / oldSz
+
+      viewRef.current._zoom  = newZoom
+      viewRef.current._panX  = mx - fracX * newSz - (canvas.width  - newSz) / 2
+      viewRef.current._panY  = my - fracY * newSz - (canvas.height - newSz) / 2
+      viewRef.current._mouseX = mx
+      viewRef.current._mouseY = my
+    }
+
+    canvas.addEventListener('mousemove',  onMouseMove)
+    canvas.addEventListener('mousedown',  onMouseDown)
+    canvas.addEventListener('mouseup',    onMouseUp)
+    canvas.addEventListener('mouseleave', onMouseLeave)
+    canvas.addEventListener('dblclick',   onDblClick)
+    canvas.addEventListener('wheel',      onWheel, { passive: false })
+
+    return () => {
+      canvas.removeEventListener('mousemove',  onMouseMove)
+      canvas.removeEventListener('mousedown',  onMouseDown)
+      canvas.removeEventListener('mouseup',    onMouseUp)
+      canvas.removeEventListener('mouseleave', onMouseLeave)
+      canvas.removeEventListener('dblclick',   onDblClick)
+      canvas.removeEventListener('wheel',      onWheel)
+      canvas.style.cursor = ''
+    }
+  }, [mod])
 
   const setParam = (id: string, value: number | boolean | string) =>
     setParams((p) => ({ ...p, [id]: value }))
@@ -45,6 +158,11 @@ export default function ModuleViewer({ mod }: Props) {
           {running ? '⏸ Pause' : '▶ Resume'}
         </button>
       </div>
+
+      {/* ── Interaction hint ── */}
+      <p className="font-mono text-[9px] tracking-[0.12em] text-[#f0ede8]/18 text-center -mt-3">
+        scroll to zoom · drag to pan · double-click to reset
+      </p>
 
       {/* ── Controls ── */}
       {controls.length > 0 && (
