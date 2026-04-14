@@ -1,9 +1,11 @@
 'use client'
 // ─────────────────────────────────────────────
 //  <ModuleViewer>
-//  Wraps any PhysicsModule: canvas + auto-generated controls
-//  Mouse: drag to pan · scroll to zoom · double-click to reset
-//  Touch: single-finger drag to pan · pinch to zoom · double-tap to reset
+//  Full-screen canvas for any PhysicsModule.
+//  The canvas fills its parent (absolute inset-0).
+//  Controls appear as a collapsible panel at the bottom.
+//  Mouse: drag to interact · scroll to zoom · double-click to reset
+//  Touch: single-finger drag · pinch to zoom · double-tap to reset
 // ─────────────────────────────────────────────
 
 import { useRef, useState, useEffect } from 'react'
@@ -24,15 +26,14 @@ function buildDefaultParams(controls: ControlDefinition[]): Params {
 export default function ModuleViewer({ mod }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const controls  = mod.getControls()
-  const [params, setParams] = useState<Params>(() => buildDefaultParams(controls))
+  const [params, setParams]         = useState<Params>(() => buildDefaultParams(controls))
+  const [controlsOpen, setControlsOpen] = useState(false)
   const { lang } = useLang()
 
   // ── View state: pan / zoom / mouse ─────────────────────────────────────────
   const viewRef    = useRef<Params>({ _panX: 0, _panY: 0, _zoom: 1, _mouseX: -1, _mouseY: -1, _dragging: false })
   const isDragging = useRef(false)
   const dragStart  = useRef({ clientX: 0, clientY: 0, panX: 0, panY: 0, dpr: 1 })
-
-  // Pinch-zoom tracking
   const lastPinchDist = useRef<number | null>(null)
 
   const { running, setRunning, reset } = useModuleRunner(mod, canvasRef, params, viewRef)
@@ -42,9 +43,10 @@ export default function ModuleViewer({ mod }: Props) {
     viewRef.current    = { _panX: 0, _panY: 0, _zoom: 1, _mouseX: -1, _mouseY: -1, _dragging: false }
     isDragging.current = false
     lastPinchDist.current = null
+    setControlsOpen(false)
   }, [mod])
 
-  // ── Canvas mouse events ────────────────────────────────────────────────────
+  // ── Canvas mouse / touch events ────────────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -73,7 +75,7 @@ export default function ModuleViewer({ mod }: Props) {
       const { dpr } = toCanvas(e.clientX, e.clientY)
       isDragging.current         = true
       viewRef.current._dragging  = true
-      dragStart.current  = {
+      dragStart.current = {
         clientX: e.clientX,
         clientY: e.clientY,
         panX: viewRef.current._panX as number,
@@ -136,7 +138,7 @@ export default function ModuleViewer({ mod }: Props) {
         const { dpr } = toCanvas(t.clientX, t.clientY)
         isDragging.current        = true
         viewRef.current._dragging = true
-        dragStart.current  = {
+        dragStart.current = {
           clientX: t.clientX,
           clientY: t.clientY,
           panX: viewRef.current._panX as number,
@@ -145,7 +147,8 @@ export default function ModuleViewer({ mod }: Props) {
         }
         lastPinchDist.current = null
       } else if (e.touches.length === 2) {
-        isDragging.current = false
+        isDragging.current        = false
+        viewRef.current._dragging = false
         const dx = e.touches[0].clientX - e.touches[1].clientX
         const dy = e.touches[0].clientY - e.touches[1].clientY
         lastPinchDist.current = Math.sqrt(dx * dx + dy * dy)
@@ -155,7 +158,7 @@ export default function ModuleViewer({ mod }: Props) {
     const onTouchMove = (e: TouchEvent) => {
       e.preventDefault()
       if (e.touches.length === 1 && isDragging.current) {
-        const t   = e.touches[0]
+        const t = e.touches[0]
         const { dpr, clientX, clientY, panX, panY } = dragStart.current
         viewRef.current._panX = panX + (t.clientX - clientX) * dpr
         viewRef.current._panY = panY + (t.clientY - clientY) * dpr
@@ -164,9 +167,9 @@ export default function ModuleViewer({ mod }: Props) {
         const dy   = e.touches[0].clientY - e.touches[1].clientY
         const dist = Math.sqrt(dx * dx + dy * dy)
         if (lastPinchDist.current !== null && lastPinchDist.current > 0) {
-          const factor  = dist / lastPinchDist.current
-          const midX    = (e.touches[0].clientX + e.touches[1].clientX) / 2
-          const midY    = (e.touches[0].clientY + e.touches[1].clientY) / 2
+          const factor = dist / lastPinchDist.current
+          const midX   = (e.touches[0].clientX + e.touches[1].clientX) / 2
+          const midY   = (e.touches[0].clientY + e.touches[1].clientY) / 2
           applyZoom(factor, midX, midY)
         }
         lastPinchDist.current = dist
@@ -208,112 +211,120 @@ export default function ModuleViewer({ mod }: Props) {
   const setParam = (id: string, value: number | boolean | string) =>
     setParams((p) => ({ ...p, [id]: value }))
 
-  // Resolve bilingual label
   const ctrlLabel = (ctrl: ControlDefinition) =>
     lang === 'en' && ctrl.labelEn ? ctrl.labelEn : ctrl.label
 
   return (
-    <div className="flex flex-col gap-6 w-full">
+    <div className="absolute inset-0 bg-[#040404]">
 
-      {/* ── Canvas ── */}
-      <div
-        className="relative w-full overflow-hidden bg-[#040404]"
-        style={{ aspectRatio: '16/9' }}
+      {/* ── Canvas fills everything ── */}
+      <canvas ref={canvasRef} className="w-full h-full block" />
+
+      {/* ── Play / Pause — top-right corner ── */}
+      <button
+        onClick={() => setRunning(!running)}
+        className="absolute top-4 right-4 z-10 font-mono text-[9px] tracking-[0.18em] uppercase text-[#f0ede8]/30 hover:text-[#f0ede8]/60 transition-colors duration-300"
       >
-        <canvas ref={canvasRef} className="w-full h-full" />
+        {running ? '⏸ Pause' : '▶ Resume'}
+      </button>
 
-        {/* Play/Pause */}
-        <button
-          onClick={() => setRunning(!running)}
-          className="absolute bottom-4 right-4 font-mono text-[9px] tracking-[0.18em] uppercase text-[#f0ede8]/35 hover:text-[#f0ede8]/65 transition-colors duration-300"
-        >
-          {running ? '⏸ Pause' : '▶ Resume'}
-        </button>
-      </div>
-
-      {/* ── Interaction hint ── */}
-      <p className="font-mono text-[9px] tracking-[0.12em] text-[#f0ede8]/18 text-center -mt-3">
-        {lang === 'en'
-          ? 'scroll / pinch to zoom · drag to pan · double-click to reset'
-          : '滚轮/双指缩放 · 拖拽平移 · 双击重置'}
-      </p>
-
-      {/* ── Controls ── */}
+      {/* ── Controls — collapsible bottom panel ── */}
       {controls.length > 0 && (
-        <div className="border-t border-[#f0ede8]/7 pt-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
-            {controls.map((ctrl) => {
+        <div className="absolute bottom-0 left-0 right-0 z-10">
 
-              if (ctrl.type === 'slider') return (
-                <label key={ctrl.id} className="flex flex-col gap-2">
-                  <div className="flex items-baseline justify-between">
-                    <span className="font-mono text-[9px] tracking-[0.15em] text-[#f0ede8]/35 uppercase">
+          {/* Toggle strip */}
+          <button
+            onClick={() => setControlsOpen((v) => !v)}
+            className="w-full flex items-center justify-center gap-2 py-2.5 bg-[#030610]/75 backdrop-blur-md font-mono text-[9px] tracking-[0.18em] uppercase text-[#f0ede8]/28 hover:text-[#f0ede8]/55 transition-colors duration-300"
+          >
+            <span>{controlsOpen ? '▼' : '▲'}</span>
+            <span>{lang === 'en' ? 'Controls' : '控制'}</span>
+            {!controlsOpen && (
+              <span className="ml-3 text-[#f0ede8]/13 text-[8px] hidden sm:inline tracking-[0.1em]">
+                {lang === 'en'
+                  ? 'scroll · drag · dbl-click to reset'
+                  : '滚轮缩放 · 拖拽 · 双击重置'}
+              </span>
+            )}
+          </button>
+
+          {/* Controls panel */}
+          {controlsOpen && (
+            <div className="bg-[#030610]/85 backdrop-blur-md px-6 py-5 border-t border-[#f0ede8]/7">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-8 gap-y-5 max-w-2xl mx-auto">
+                {controls.map((ctrl) => {
+
+                  if (ctrl.type === 'slider') return (
+                    <label key={ctrl.id} className="flex flex-col gap-2">
+                      <div className="flex items-baseline justify-between">
+                        <span className="font-mono text-[9px] tracking-[0.15em] text-[#f0ede8]/35 uppercase">
+                          {ctrlLabel(ctrl)}
+                        </span>
+                        <span className="font-mono text-[10px] text-[#c8955a]/70">
+                          {typeof params[ctrl.id] === 'number'
+                            ? (params[ctrl.id] as number).toFixed(2)
+                            : params[ctrl.id]}
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min={ctrl.min} max={ctrl.max} step={ctrl.step}
+                        value={params[ctrl.id] as number}
+                        onChange={(e) => setParam(ctrl.id, parseFloat(e.target.value))}
+                      />
+                    </label>
+                  )
+
+                  if (ctrl.type === 'toggle') return (
+                    <label key={ctrl.id} className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={params[ctrl.id] as boolean}
+                        onChange={(e) => setParam(ctrl.id, e.target.checked)}
+                        className="accent-[#c8955a] w-3 h-3"
+                      />
+                      <span className="font-mono text-[9px] tracking-[0.15em] text-[#f0ede8]/35 uppercase">
+                        {ctrlLabel(ctrl)}
+                      </span>
+                    </label>
+                  )
+
+                  if (ctrl.type === 'select') return (
+                    <label key={ctrl.id} className="flex flex-col gap-2">
+                      <span className="font-mono text-[9px] tracking-[0.15em] text-[#f0ede8]/35 uppercase">
+                        {ctrlLabel(ctrl)}
+                      </span>
+                      <select
+                        value={params[ctrl.id] as string}
+                        onChange={(e) => setParam(ctrl.id, e.target.value)}
+                        className="bg-transparent text-[#f0ede8]/60 font-mono text-[10px] border-b border-[#f0ede8]/12 pb-1 focus:outline-none focus:border-[#c8955a]/40 cursor-pointer transition-colors duration-200"
+                      >
+                        {ctrl.options.map((opt) => (
+                          <option key={opt.value} value={opt.value} className="bg-[#0d0d0b] text-[#f0ede8]">
+                            {lang === 'en' && opt.labelEn ? opt.labelEn : opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )
+
+                  if (ctrl.type === 'button') return (
+                    <button
+                      key={ctrl.id}
+                      onClick={reset}
+                      className="col-span-2 sm:col-span-3 font-mono text-[9px] tracking-[0.2em] uppercase text-[#f0ede8]/30 hover:text-[#f0ede8]/60 border border-[#f0ede8]/7 hover:border-[#f0ede8]/14 py-2.5 transition-colors duration-300"
+                    >
                       {ctrlLabel(ctrl)}
-                    </span>
-                    <span className="font-mono text-[10px] text-[#c8955a]/70">
-                      {typeof params[ctrl.id] === 'number'
-                        ? (params[ctrl.id] as number).toFixed(2)
-                        : params[ctrl.id]}
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min={ctrl.min} max={ctrl.max} step={ctrl.step}
-                    value={params[ctrl.id] as number}
-                    onChange={(e) => setParam(ctrl.id, parseFloat(e.target.value))}
-                  />
-                </label>
-              )
+                    </button>
+                  )
 
-              if (ctrl.type === 'toggle') return (
-                <label key={ctrl.id} className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={params[ctrl.id] as boolean}
-                    onChange={(e) => setParam(ctrl.id, e.target.checked)}
-                    className="accent-[#c8955a] w-3 h-3"
-                  />
-                  <span className="font-mono text-[9px] tracking-[0.15em] text-[#f0ede8]/35 uppercase">
-                    {ctrlLabel(ctrl)}
-                  </span>
-                </label>
-              )
-
-              if (ctrl.type === 'select') return (
-                <label key={ctrl.id} className="flex flex-col gap-2">
-                  <span className="font-mono text-[9px] tracking-[0.15em] text-[#f0ede8]/35 uppercase">
-                    {ctrlLabel(ctrl)}
-                  </span>
-                  <select
-                    value={params[ctrl.id] as string}
-                    onChange={(e) => setParam(ctrl.id, e.target.value)}
-                    className="bg-transparent text-[#f0ede8]/60 font-mono text-[10px] border-b border-[#f0ede8]/12 pb-1 focus:outline-none focus:border-[#c8955a]/40 cursor-pointer transition-colors duration-200"
-                  >
-                    {ctrl.options.map((opt) => (
-                      <option key={opt.value} value={opt.value} className="bg-[#0d0d0b] text-[#f0ede8]">
-                        {lang === 'en' && opt.labelEn ? opt.labelEn : opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )
-
-              if (ctrl.type === 'button') return (
-                <button
-                  key={ctrl.id}
-                  onClick={reset}
-                  className="col-span-1 sm:col-span-2 font-mono text-[9px] tracking-[0.2em] uppercase text-[#f0ede8]/30 hover:text-[#f0ede8]/60 border border-[#f0ede8]/7 hover:border-[#f0ede8]/14 py-2.5 transition-colors duration-300"
-                >
-                  {ctrlLabel(ctrl)}
-                </button>
-              )
-
-              return null
-            })}
-          </div>
+                  return null
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
-
     </div>
   )
 }
