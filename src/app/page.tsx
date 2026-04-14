@@ -37,7 +37,7 @@ const MODULES = [
     titleEn: 'Double Slit',
     desc:    '观测行为本身改变结果——量子测量与波函数坍缩的直观展示。',
     theory:  ['Quantum Mechanics'],
-    ready:   false,
+    ready:   true,
   },
   {
     id:      'spacetime-curvature',
