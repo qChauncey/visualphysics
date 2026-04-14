@@ -42,6 +42,7 @@ export interface PhysicsModule<S = unknown> {
     title: string
     titleEn: string
     description: string
+    descriptionEn?: string
     theory: TheoryTag[]
     mathLevel: MathLevel
     renderer: RendererType

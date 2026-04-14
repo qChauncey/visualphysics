@@ -131,7 +131,8 @@ const DoubleSlit: PhysicsModule<SlitState> = {
   metadata: {
     title:       '双缝实验',
     titleEn:     'Double Slit',
-    description: '单个粒子逐一通过双缝，却在屏幕上累积出干涉条纹——量子测量与波函数坍缩的最直观演示。',
+    description:   '单个粒子逐一通过双缝，却在屏幕上累积出干涉条纹——量子测量与波函数坍缩的最直观演示。',
+    descriptionEn: 'Individual particles pass through two slits one by one, yet accumulate into an interference pattern — the most vivid demonstration of quantum measurement and wavefunction collapse.',
     theory:      ['quantum-mechanics'],
     mathLevel:   2,
     renderer:    'canvas2d',

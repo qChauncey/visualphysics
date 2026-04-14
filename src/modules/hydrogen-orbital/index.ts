@@ -132,7 +132,8 @@ const HydrogenOrbitalModule: PhysicsModule<HydrogenState> = {
   metadata: {
     title:       '氢原子轨道',
     titleEn:     'Hydrogen Orbitals',
-    description: '量子力学概率云——氢原子电子波函数 xz 截面 (1s / 2p / 3d)',
+    description:   '量子力学概率云——氢原子电子波函数 xz 截面 (1s / 2p / 3d)',
+    descriptionEn: 'Quantum probability clouds — the xz cross-section of hydrogen electron wavefunctions (1s / 2p / 3d).',
     theory:      ['quantum-mechanics'],
     mathLevel:   3,
     renderer:    'canvas2d',

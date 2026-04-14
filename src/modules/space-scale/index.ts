@@ -194,7 +194,8 @@ const SpaceScaleModule: PhysicsModule<SpaceState> = {
   metadata: {
     title:       '宇宙尺度',
     titleEn:     'Scale of the Universe',
-    description: '太阳系天体大小对比与轨道运动——感受行星尺度的巨大差异',
+    description:   '太阳系天体大小对比与轨道运动——感受行星尺度的巨大差异',
+    descriptionEn: 'Comparative sizes of solar system bodies and their orbital motion — experience the vast differences in planetary scale.',
     theory:      ['astrophysics', 'general-relativity'],
     mathLevel:   1,
     renderer:    'threejs',

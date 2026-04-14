@@ -48,7 +48,8 @@ const DoublePendulumModule: PhysicsModule<State> = {
   metadata: {
     title: '双摆混沌',
     titleEn: 'Double Pendulum',
-    description: '经典混沌系统——初始条件的微小差异导致完全不同的轨迹',
+    description:    '经典混沌系统——初始条件的微小差异导致完全不同的轨迹',
+    descriptionEn:  'A classical chaotic system — tiny differences in initial conditions lead to completely divergent trajectories.',
     theory: ['classical-mechanics'],
     mathLevel: 2,
     renderer: 'canvas2d',
