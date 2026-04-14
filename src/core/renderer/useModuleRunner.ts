@@ -10,7 +10,7 @@ import type { PhysicsModule, Params } from '@/types/physics'
 
 export function useModuleRunner(
   mod: PhysicsModule | null,
-  canvasRef: React.RefObject<HTMLCanvasElement>,
+  canvasRef: React.RefObject<HTMLCanvasElement | null>,
   params: Params
 ) {
   const stateRef   = useRef<unknown>(null)

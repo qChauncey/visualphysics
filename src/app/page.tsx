@@ -19,17 +19,17 @@ const modules = [
     tags: ['量子力学'],
     color: 'from-purple-500/20 to-pink-500/10',
     border: 'border-purple-500/30',
-    ready: false,
+    ready: true,
   },
   {
     id: 'space-scale',
     title: '宇宙尺度',
     titleEn: 'Scale of the Universe',
-    desc: '从夸克到可观测宇宙——天体大小实时对比',
+    desc: '太阳系天体大小对比与轨道运动——感受行星尺度的巨大差异',
     tags: ['天体物理', '广义相对论'],
     color: 'from-amber-500/20 to-orange-500/10',
     border: 'border-amber-500/30',
-    ready: false,
+    ready: true,
   },
 ]
 

@@ -15,7 +15,7 @@ interface Props {
 function buildDefaultParams(controls: ControlDefinition[]): Params {
   const p: Params = {}
   for (const c of controls) {
-    if (c.type !== 'button') p[c.id] = c.default
+    if (c.type !== 'button' && c.type !== 'body-selector') p[c.id] = c.default
   }
   return p
 }
@@ -73,6 +73,22 @@ export default function ModuleViewer({ mod }: Props) {
                 className="accent-blue-400"
               />
               <span className="text-neutral-300 text-xs">{ctrl.label}</span>
+            </label>
+          )
+          if (ctrl.type === 'select') return (
+            <label key={ctrl.id} className="flex flex-col gap-1">
+              <span className="text-neutral-400 text-xs">{ctrl.label}</span>
+              <select
+                value={params[ctrl.id] as string}
+                onChange={(e) => setParam(ctrl.id, e.target.value)}
+                className="bg-white/8 text-neutral-300 text-xs rounded-lg px-2 py-1.5 border border-white/10 focus:outline-none focus:border-blue-400/50 cursor-pointer"
+              >
+                {ctrl.options.map((opt) => (
+                  <option key={opt.value} value={opt.value} className="bg-[#1a1a2e]">
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
             </label>
           )
           if (ctrl.type === 'button') return (
