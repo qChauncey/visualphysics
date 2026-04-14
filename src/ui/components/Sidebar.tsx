@@ -29,13 +29,13 @@ const CATEGORIES = [
   {
     key: 'catGR' as const,
     modules: [
-      { id: 'spacetime-curvature', num: '05', zh: '时空曲率',        en: 'Spacetime Curvature',ready: false },
+      { id: 'spacetime-curvature', num: '05', zh: '时空曲率',        en: 'Spacetime Curvature',ready: true  },
     ],
   },
   {
     key: 'catString' as const,
     modules: [
-      { id: 'calabi-yau',          num: '06', zh: 'Calabi-Yau 流形', en: 'Calabi-Yau Manifold',ready: false },
+      { id: 'calabi-yau',          num: '06', zh: 'Calabi-Yau 流形', en: 'Calabi-Yau Manifold',ready: true  },
     ],
   },
 ] as const
@@ -140,12 +140,24 @@ export default function Sidebar({ onClose }: Props) {
 
       {/* ── Footer ── */}
       <div className="px-4 py-5 border-t border-[#f0ede8]/7 space-y-px">
-        {/* Theory tree — coming soon */}
-        <div className="flex items-center gap-2.5 px-2 py-1.5 opacity-30 select-none">
-          <span className="font-mono text-[9px] text-[#f0ede8]/30 w-5">↗</span>
-          <span className="text-[12px] text-[#f0ede8]/35 flex-1">{t.theoryTree}</span>
-          <span className="font-mono text-[7px] tracking-[0.2em] text-[#f0ede8]/22">{t.soon}</span>
-        </div>
+        {/* Theory tree — now live */}
+        <Link
+          href="/theory"
+          onClick={onClose}
+          className={`flex items-center gap-2.5 px-2 py-1.5 transition-colors duration-200 group ${
+            pathname === '/theory' ? 'bg-[#f0ede8]/5' : 'hover:bg-[#f0ede8]/[0.035]'
+          }`}
+        >
+          <span className={`font-mono text-[9px] w-5 transition-colors duration-200 ${
+            pathname === '/theory' ? 'text-[#c8955a]' : 'text-[#f0ede8]/28 group-hover:text-[#f0ede8]/50'
+          }`}>↗</span>
+          <span className={`text-[12px] flex-1 transition-colors duration-200 ${
+            pathname === '/theory' ? 'text-[#f0ede8]' : 'text-[#f0ede8]/52 group-hover:text-[#f0ede8]/80'
+          }`}>{t.theoryTree}</span>
+          {pathname === '/theory' && (
+            <span className="w-1 h-1 rounded-full bg-[#c8955a] flex-shrink-0" />
+          )}
+        </Link>
 
         {/* Lang toggle + year */}
         <div className="flex items-center justify-between px-2 pt-2">

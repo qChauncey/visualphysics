@@ -37,10 +37,9 @@ export function listModules(): string[] {
 //  To add a new module: one line below + create the folder.
 // ─────────────────────────────────────────────
 
-registerModule('double-pendulum',   () => import('@/modules/double-pendulum'))
-registerModule('hydrogen-orbital',  () => import('@/modules/hydrogen-orbital'))
-registerModule('space-scale',       () => import('@/modules/space-scale'))
-registerModule('double-slit',       () => import('@/modules/double-slit'))
-// registerModule('island-formula', () => import('@/modules/island-formula'))
-// registerModule('calabi-yau',     () => import('@/modules/calabi-yau'))
-// registerModule('spin-network',   () => import('@/modules/spin-network'))
+registerModule('double-pendulum',      () => import('@/modules/double-pendulum'))
+registerModule('hydrogen-orbital',     () => import('@/modules/hydrogen-orbital'))
+registerModule('space-scale',          () => import('@/modules/space-scale'))
+registerModule('double-slit',          () => import('@/modules/double-slit'))
+registerModule('spacetime-curvature',  () => import('@/modules/spacetime-curvature'))
+registerModule('calabi-yau',           () => import('@/modules/calabi-yau'))

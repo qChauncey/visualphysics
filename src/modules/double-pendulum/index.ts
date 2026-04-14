@@ -149,13 +149,13 @@ const DoublePendulumModule: PhysicsModule<State> = {
 
   getControls(): ControlDefinition[] {
     return [
-      { type: 'slider', id: 'theta1',  label: '初始角度 1', min: 0,   max: Math.PI, step: 0.01, default: Math.PI * 0.8 },
-      { type: 'slider', id: 'theta2',  label: '初始角度 2', min: 0,   max: Math.PI, step: 0.01, default: Math.PI * 0.9 },
-      { type: 'slider', id: 'mass1',   label: '质量 1',     min: 0.5, max: 5,       step: 0.1,  default: 1 },
-      { type: 'slider', id: 'mass2',   label: '质量 2',     min: 0.5, max: 5,       step: 0.1,  default: 1 },
-      { type: 'slider', id: 'length1', label: '杆长 1',     min: 0.2, max: 1,       step: 0.05, default: 0.5 },
-      { type: 'slider', id: 'length2', label: '杆长 2',     min: 0.2, max: 1,       step: 0.05, default: 0.5 },
-      { type: 'button', id: 'reset',   label: '重置' },
+      { type: 'slider', id: 'theta1',  label: '初始角度 1', labelEn: 'Initial Angle 1', min: 0,   max: Math.PI, step: 0.01, default: Math.PI * 0.8 },
+      { type: 'slider', id: 'theta2',  label: '初始角度 2', labelEn: 'Initial Angle 2', min: 0,   max: Math.PI, step: 0.01, default: Math.PI * 0.9 },
+      { type: 'slider', id: 'mass1',   label: '质量 1',     labelEn: 'Mass 1',           min: 0.5, max: 5,       step: 0.1,  default: 1 },
+      { type: 'slider', id: 'mass2',   label: '质量 2',     labelEn: 'Mass 2',           min: 0.5, max: 5,       step: 0.1,  default: 1 },
+      { type: 'slider', id: 'length1', label: '杆长 1',     labelEn: 'Rod Length 1',     min: 0.2, max: 1,       step: 0.05, default: 0.5 },
+      { type: 'slider', id: 'length2', label: '杆长 2',     labelEn: 'Rod Length 2',     min: 0.2, max: 1,       step: 0.05, default: 0.5 },
+      { type: 'button', id: 'reset',   label: '重置',       labelEn: 'Reset' },
     ]
   },
 

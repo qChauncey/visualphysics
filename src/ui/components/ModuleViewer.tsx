@@ -3,11 +3,13 @@
 //  <ModuleViewer>
 //  Wraps any PhysicsModule: canvas + auto-generated controls
 //  Mouse: drag to pan · scroll to zoom · double-click to reset
+//  Touch: single-finger drag to pan · pinch to zoom · double-tap to reset
 // ─────────────────────────────────────────────
 
 import { useRef, useState, useEffect } from 'react'
 import type { PhysicsModule, Params, ControlDefinition } from '@/types/physics'
 import { useModuleRunner } from '@/core/renderer/useModuleRunner'
+import { useLang } from '@/core/i18n'
 
 interface Props { mod: PhysicsModule }
 
@@ -23,12 +25,15 @@ export default function ModuleViewer({ mod }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const controls  = mod.getControls()
   const [params, setParams] = useState<Params>(() => buildDefaultParams(controls))
+  const { lang } = useLang()
 
   // ── View state: pan / zoom / mouse ─────────────────────────────────────────
-  // Ref (not state) so mouse-move updates skip React re-renders entirely
   const viewRef    = useRef<Params>({ _panX: 0, _panY: 0, _zoom: 1, _mouseX: -1, _mouseY: -1 })
   const isDragging = useRef(false)
   const dragStart  = useRef({ clientX: 0, clientY: 0, panX: 0, panY: 0, dpr: 1 })
+
+  // Pinch-zoom tracking
+  const lastPinchDist = useRef<number | null>(null)
 
   const { running, setRunning, reset } = useModuleRunner(mod, canvasRef, params, viewRef)
 
@@ -36,22 +41,23 @@ export default function ModuleViewer({ mod }: Props) {
   useEffect(() => {
     viewRef.current    = { _panX: 0, _panY: 0, _zoom: 1, _mouseX: -1, _mouseY: -1 }
     isDragging.current = false
+    lastPinchDist.current = null
   }, [mod])
 
-  // ── Canvas mouse / wheel events ────────────────────────────────────────────
+  // ── Canvas mouse events ────────────────────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
 
     canvas.style.cursor = 'crosshair'
 
-    /** Convert CSS-pixel client coords → canvas pixel coords (accounts for DPR) */
     const toCanvas = (clientX: number, clientY: number) => {
       const rect = canvas.getBoundingClientRect()
       const dpr  = canvas.width / rect.width
       return { x: (clientX - rect.left) * dpr, y: (clientY - rect.top) * dpr, dpr }
     }
 
+    // ── Mouse ──────────────────────────────────────────────────────────────
     const onMouseMove = (e: MouseEvent) => {
       const { x, y } = toCanvas(e.clientX, e.clientY)
       viewRef.current._mouseX = x
@@ -94,14 +100,10 @@ export default function ModuleViewer({ mod }: Props) {
       viewRef.current._zoom = 1
     }
 
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault()
-      const factor  = e.deltaY < 0 ? 1.12 : 1 / 1.12
+    const applyZoom = (factor: number, clientX: number, clientY: number) => {
       const oldZoom = viewRef.current._zoom as number
       const newZoom = Math.max(0.3, Math.min(12, oldZoom * factor))
-
-      // Zoom centred on the mouse cursor so the point under the cursor stays fixed
-      const { x: mx, y: my } = toCanvas(e.clientX, e.clientY)
+      const { x: mx, y: my } = toCanvas(clientX, clientY)
       const base    = Math.min(canvas.width, canvas.height) * 0.88
       const oldSz   = base * oldZoom
       const newSz   = base * newZoom
@@ -111,12 +113,67 @@ export default function ModuleViewer({ mod }: Props) {
       const oldOy   = (canvas.height - oldSz) / 2 + oldPanY
       const fracX   = (mx - oldOx) / oldSz
       const fracY   = (my - oldOy) / oldSz
-
       viewRef.current._zoom  = newZoom
       viewRef.current._panX  = mx - fracX * newSz - (canvas.width  - newSz) / 2
       viewRef.current._panY  = my - fracY * newSz - (canvas.height - newSz) / 2
       viewRef.current._mouseX = mx
       viewRef.current._mouseY = my
+    }
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      applyZoom(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX, e.clientY)
+    }
+
+    // ── Touch ──────────────────────────────────────────────────────────────
+    const onTouchStart = (e: TouchEvent) => {
+      e.preventDefault()
+      if (e.touches.length === 1) {
+        const t = e.touches[0]
+        const { dpr } = toCanvas(t.clientX, t.clientY)
+        isDragging.current = true
+        dragStart.current  = {
+          clientX: t.clientX,
+          clientY: t.clientY,
+          panX: viewRef.current._panX as number,
+          panY: viewRef.current._panY as number,
+          dpr,
+        }
+        lastPinchDist.current = null
+      } else if (e.touches.length === 2) {
+        isDragging.current = false
+        const dx = e.touches[0].clientX - e.touches[1].clientX
+        const dy = e.touches[0].clientY - e.touches[1].clientY
+        lastPinchDist.current = Math.sqrt(dx * dx + dy * dy)
+      }
+    }
+
+    const onTouchMove = (e: TouchEvent) => {
+      e.preventDefault()
+      if (e.touches.length === 1 && isDragging.current) {
+        const t   = e.touches[0]
+        const { dpr, clientX, clientY, panX, panY } = dragStart.current
+        viewRef.current._panX = panX + (t.clientX - clientX) * dpr
+        viewRef.current._panY = panY + (t.clientY - clientY) * dpr
+      } else if (e.touches.length === 2) {
+        const dx   = e.touches[0].clientX - e.touches[1].clientX
+        const dy   = e.touches[0].clientY - e.touches[1].clientY
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        if (lastPinchDist.current !== null && lastPinchDist.current > 0) {
+          const factor  = dist / lastPinchDist.current
+          const midX    = (e.touches[0].clientX + e.touches[1].clientX) / 2
+          const midY    = (e.touches[0].clientY + e.touches[1].clientY) / 2
+          applyZoom(factor, midX, midY)
+        }
+        lastPinchDist.current = dist
+      }
+    }
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length === 0) {
+        isDragging.current    = false
+        lastPinchDist.current = null
+      }
     }
 
     canvas.addEventListener('mousemove',  onMouseMove)
@@ -125,6 +182,9 @@ export default function ModuleViewer({ mod }: Props) {
     canvas.addEventListener('mouseleave', onMouseLeave)
     canvas.addEventListener('dblclick',   onDblClick)
     canvas.addEventListener('wheel',      onWheel, { passive: false })
+    canvas.addEventListener('touchstart', onTouchStart, { passive: false })
+    canvas.addEventListener('touchmove',  onTouchMove,  { passive: false })
+    canvas.addEventListener('touchend',   onTouchEnd,   { passive: false })
 
     return () => {
       canvas.removeEventListener('mousemove',  onMouseMove)
@@ -133,12 +193,19 @@ export default function ModuleViewer({ mod }: Props) {
       canvas.removeEventListener('mouseleave', onMouseLeave)
       canvas.removeEventListener('dblclick',   onDblClick)
       canvas.removeEventListener('wheel',      onWheel)
+      canvas.removeEventListener('touchstart', onTouchStart)
+      canvas.removeEventListener('touchmove',  onTouchMove)
+      canvas.removeEventListener('touchend',   onTouchEnd)
       canvas.style.cursor = ''
     }
   }, [mod])
 
   const setParam = (id: string, value: number | boolean | string) =>
     setParams((p) => ({ ...p, [id]: value }))
+
+  // Resolve bilingual label
+  const ctrlLabel = (ctrl: ControlDefinition) =>
+    lang === 'en' && ctrl.labelEn ? ctrl.labelEn : ctrl.label
 
   return (
     <div className="flex flex-col gap-6 w-full">
@@ -153,7 +220,7 @@ export default function ModuleViewer({ mod }: Props) {
         {/* Play/Pause */}
         <button
           onClick={() => setRunning(!running)}
-          className="absolute bottom-4 right-4 font-mono text-[9px] tracking-[0.18em] uppercase text-[#f0ede8]/35 hover:text-[#f0ede8]/65 transition-colors duration-300 px-0 py-0"
+          className="absolute bottom-4 right-4 font-mono text-[9px] tracking-[0.18em] uppercase text-[#f0ede8]/35 hover:text-[#f0ede8]/65 transition-colors duration-300"
         >
           {running ? '⏸ Pause' : '▶ Resume'}
         </button>
@@ -161,20 +228,22 @@ export default function ModuleViewer({ mod }: Props) {
 
       {/* ── Interaction hint ── */}
       <p className="font-mono text-[9px] tracking-[0.12em] text-[#f0ede8]/18 text-center -mt-3">
-        scroll to zoom · drag to pan · double-click to reset
+        {lang === 'en'
+          ? 'scroll / pinch to zoom · drag to pan · double-click to reset'
+          : '滚轮/双指缩放 · 拖拽平移 · 双击重置'}
       </p>
 
       {/* ── Controls ── */}
       {controls.length > 0 && (
         <div className="border-t border-[#f0ede8]/7 pt-6">
-          <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
             {controls.map((ctrl) => {
 
               if (ctrl.type === 'slider') return (
                 <label key={ctrl.id} className="flex flex-col gap-2">
                   <div className="flex items-baseline justify-between">
                     <span className="font-mono text-[9px] tracking-[0.15em] text-[#f0ede8]/35 uppercase">
-                      {ctrl.label}
+                      {ctrlLabel(ctrl)}
                     </span>
                     <span className="font-mono text-[10px] text-[#c8955a]/70">
                       {typeof params[ctrl.id] === 'number'
@@ -200,7 +269,7 @@ export default function ModuleViewer({ mod }: Props) {
                     className="accent-[#c8955a] w-3 h-3"
                   />
                   <span className="font-mono text-[9px] tracking-[0.15em] text-[#f0ede8]/35 uppercase">
-                    {ctrl.label}
+                    {ctrlLabel(ctrl)}
                   </span>
                 </label>
               )
@@ -208,7 +277,7 @@ export default function ModuleViewer({ mod }: Props) {
               if (ctrl.type === 'select') return (
                 <label key={ctrl.id} className="flex flex-col gap-2">
                   <span className="font-mono text-[9px] tracking-[0.15em] text-[#f0ede8]/35 uppercase">
-                    {ctrl.label}
+                    {ctrlLabel(ctrl)}
                   </span>
                   <select
                     value={params[ctrl.id] as string}
@@ -217,7 +286,7 @@ export default function ModuleViewer({ mod }: Props) {
                   >
                     {ctrl.options.map((opt) => (
                       <option key={opt.value} value={opt.value} className="bg-[#0d0d0b] text-[#f0ede8]">
-                        {opt.label}
+                        {lang === 'en' && opt.labelEn ? opt.labelEn : opt.label}
                       </option>
                     ))}
                   </select>
@@ -228,9 +297,9 @@ export default function ModuleViewer({ mod }: Props) {
                 <button
                   key={ctrl.id}
                   onClick={reset}
-                  className="col-span-2 font-mono text-[9px] tracking-[0.2em] uppercase text-[#f0ede8]/30 hover:text-[#f0ede8]/60 border border-[#f0ede8]/7 hover:border-[#f0ede8]/14 py-2.5 transition-colors duration-300"
+                  className="col-span-1 sm:col-span-2 font-mono text-[9px] tracking-[0.2em] uppercase text-[#f0ede8]/30 hover:text-[#f0ede8]/60 border border-[#f0ede8]/7 hover:border-[#f0ede8]/14 py-2.5 transition-colors duration-300"
                 >
-                  {ctrl.label}
+                  {ctrlLabel(ctrl)}
                 </button>
               )
 
