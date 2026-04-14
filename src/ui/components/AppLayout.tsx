@@ -1,54 +1,87 @@
 'use client'
 // ── AppLayout ──────────────────────────────────────────────────────────────
-// Shared shell: sidebar drawer + mobile hamburger + backdrop overlay.
-// On desktop the sidebar is always visible.
-// On mobile the sidebar slides in from the left on hamburger tap.
+// Shared shell: collapsible sidebar + mobile drawer + backdrop.
+//
+// Desktop: sidebar is always in the flex flow; clicking ‹ inside the sidebar
+//   OR the ☰ button in the main area collapses it (width → 0).
+// Mobile:  sidebar is a fixed overlay; hamburger / ‹ toggles it.
 
 import { useState } from 'react'
 import Sidebar from './Sidebar'
 
 interface Props {
   children: React.ReactNode
-  /** Extra classes for the main content wrapper */
   mainClassName?: string
 }
 
 export default function AppLayout({ children, mainClassName = 'flex-1 relative overflow-hidden' }: Props) {
-  const [open, setOpen] = useState(false)
+  const [mobileOpen,       setMobileOpen]       = useState(false)
+  const [desktopCollapsed, setDesktopCollapsed] = useState(false)
+
+  // Unified toggle: mobile vs desktop decided at click-time so no SSR mismatch
+  const handleToggle = () => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setMobileOpen((v) => !v)
+    } else {
+      setDesktopCollapsed((v) => !v)
+    }
+  }
 
   return (
     <div className="flex h-screen bg-[#080808] text-[#f0ede8] overflow-hidden">
 
       {/* ── Mobile backdrop ── */}
-      {open && (
+      {mobileOpen && (
         <div
           className="fixed inset-0 bg-black/60 z-40 md:hidden"
-          onClick={() => setOpen(false)}
+          onClick={() => setMobileOpen(false)}
         />
       )}
 
-      {/* ── Sidebar: drawer on mobile, static column on desktop ── */}
+      {/* ── Desktop sidebar: in-flow, width transitions to 0 when collapsed ── */}
       <div className={[
-        'fixed inset-y-0 left-0 z-50',
-        'md:relative md:z-auto md:translate-x-0',
-        'transition-transform duration-300',
-        open ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
+        'hidden md:block flex-shrink-0 overflow-hidden',
+        'transition-all duration-300 ease-in-out',
+        desktopCollapsed ? 'w-0' : 'w-60',
       ].join(' ')}>
-        <Sidebar onClose={() => setOpen(false)} />
+        {/* Inner div keeps its fixed width so the outer clips smoothly */}
+        <div className="w-60 h-full">
+          <Sidebar
+            onCollapse={() => setDesktopCollapsed(true)}
+          />
+        </div>
+      </div>
+
+      {/* ── Mobile sidebar: fixed drawer ── */}
+      <div className={[
+        'md:hidden fixed inset-y-0 left-0 z-50',
+        'transition-transform duration-300 ease-in-out',
+        mobileOpen ? 'translate-x-0' : '-translate-x-full',
+      ].join(' ')}>
+        <Sidebar
+          onClose={() => setMobileOpen(false)}
+        />
       </div>
 
       {/* ── Main ── */}
       <main className={mainClassName}>
 
-        {/* Hamburger — mobile only */}
+        {/* Unified toggle button — always visible top-left */}
         <button
-          aria-label="Open navigation"
-          onClick={() => setOpen(true)}
-          className="absolute top-5 left-5 z-30 md:hidden flex flex-col gap-[5px] p-1"
+          aria-label="Toggle navigation"
+          onClick={handleToggle}
+          className="absolute top-4 left-4 z-30 flex flex-col gap-[5px] p-1.5 hover:opacity-80 transition-opacity"
         >
-          <span className="w-5 h-px bg-[#f0ede8]/55 block" />
-          <span className="w-5 h-px bg-[#f0ede8]/55 block" />
-          <span className="w-3.5 h-px bg-[#f0ede8]/55 block" />
+          {/* Show X on mobile-open; show ☰ otherwise */}
+          {mobileOpen ? (
+            <span className="text-[#f0ede8]/55 text-base leading-none">✕</span>
+          ) : (
+            <>
+              <span className="w-5 h-px bg-[#f0ede8]/50 block" />
+              <span className="w-5 h-px bg-[#f0ede8]/50 block" />
+              <span className="w-3.5 h-px bg-[#f0ede8]/50 block" />
+            </>
+          )}
         </button>
 
         {children}

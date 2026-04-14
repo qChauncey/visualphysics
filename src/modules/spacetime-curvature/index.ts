@@ -302,28 +302,34 @@ const SpacetimeCurvatureModule: PhysicsModule<SpacetimeState> = {
     if (mouseX >= 0 && mouseY >= 0) {
       const ndcX =  (mouseX / el.width)  * 2 - 1
       const ndcY = -(mouseY / el.height) * 2 + 1
-      const mouse = new THREE.Vector2(ndcX, ndcY)
-      state.raycaster.setFromCamera(mouse, state.camera)
+      state.raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), state.camera)
 
-      if (params._dragging && state.dragIdx >= 0) {
-        // Move the dragged mass along the horizontal plane
-        const target = new THREE.Vector3()
-        state.raycaster.ray.intersectPlane(state.dragPlane, target)
-        // Clamp to grid boundary
-        const clamp = GRID_SIZE * 0.9
-        state.masses[state.dragIdx].x = Math.max(-clamp, Math.min(clamp, target.x))
-        state.masses[state.dragIdx].z = Math.max(-clamp, Math.min(clamp, target.z))
-      } else if (!params._dragging) {
-        // Check for hover hit to highlight
-        const sphere = state.masses.map((m) => m.mesh)
-        const hits   = state.raycaster.intersectObjects(sphere)
+      if (!params._dragging) {
+        // Not dragging: reset drag target and update hover highlights
+        state.dragIdx = -1
+        const hits = state.raycaster.intersectObjects(state.masses.map((m) => m.mesh))
         state.masses.forEach((m, i) => {
-          const mat = m.mesh.material as THREE.MeshStandardMaterial
-          mat.emissiveIntensity = hits.length > 0 && hits[0].object === m.mesh ? 1.0 : 0.55
-          // Store which mass is hovered so mousedown knows
-          ;(state.masses[i] as Mass & { hovered?: boolean }).hovered = hits.some((h) => h.object === m.mesh)
+          const mat     = m.mesh.material as THREE.MeshStandardMaterial
+          const hovered = hits.some((h) => h.object === m.mesh)
+          mat.emissiveIntensity = hovered ? 1.0 : 0.55
+          ;(state.masses[i] as Mass & { hovered?: boolean }).hovered = hovered
         })
+      } else {
+        // Dragging: on the first frame, pick up whichever mass is currently hovered
+        if (state.dragIdx === -1) {
+          state.dragIdx = state.masses.findIndex((m) => (m as Mass & { hovered?: boolean }).hovered)
+        }
+        if (state.dragIdx >= 0) {
+          const target = new THREE.Vector3()
+          state.raycaster.ray.intersectPlane(state.dragPlane, target)
+          const clamp = GRID_SIZE * 0.9
+          state.masses[state.dragIdx].x = Math.max(-clamp, Math.min(clamp, target.x))
+          state.masses[state.dragIdx].z = Math.max(-clamp, Math.min(clamp, target.z))
+        }
       }
+    } else if (!params._dragging) {
+      // Mouse left canvas: reset drag
+      state.dragIdx = -1
     }
 
     return { ...state, camAngle }
