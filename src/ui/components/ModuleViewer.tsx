@@ -28,7 +28,7 @@ export default function ModuleViewer({ mod }: Props) {
   const { lang } = useLang()
 
   // ── View state: pan / zoom / mouse ─────────────────────────────────────────
-  const viewRef    = useRef<Params>({ _panX: 0, _panY: 0, _zoom: 1, _mouseX: -1, _mouseY: -1 })
+  const viewRef    = useRef<Params>({ _panX: 0, _panY: 0, _zoom: 1, _mouseX: -1, _mouseY: -1, _dragging: false })
   const isDragging = useRef(false)
   const dragStart  = useRef({ clientX: 0, clientY: 0, panX: 0, panY: 0, dpr: 1 })
 
@@ -39,7 +39,7 @@ export default function ModuleViewer({ mod }: Props) {
 
   // Reset view whenever the module changes
   useEffect(() => {
-    viewRef.current    = { _panX: 0, _panY: 0, _zoom: 1, _mouseX: -1, _mouseY: -1 }
+    viewRef.current    = { _panX: 0, _panY: 0, _zoom: 1, _mouseX: -1, _mouseY: -1, _dragging: false }
     isDragging.current = false
     lastPinchDist.current = null
   }, [mod])
@@ -71,7 +71,8 @@ export default function ModuleViewer({ mod }: Props) {
 
     const onMouseDown = (e: MouseEvent) => {
       const { dpr } = toCanvas(e.clientX, e.clientY)
-      isDragging.current = true
+      isDragging.current         = true
+      viewRef.current._dragging  = true
       dragStart.current  = {
         clientX: e.clientX,
         clientY: e.clientY,
@@ -83,15 +84,17 @@ export default function ModuleViewer({ mod }: Props) {
     }
 
     const onMouseUp = () => {
-      isDragging.current  = false
-      canvas.style.cursor = 'crosshair'
+      isDragging.current        = false
+      viewRef.current._dragging = false
+      canvas.style.cursor       = 'crosshair'
     }
 
     const onMouseLeave = () => {
-      isDragging.current      = false
-      viewRef.current._mouseX = -1
-      viewRef.current._mouseY = -1
-      canvas.style.cursor     = 'crosshair'
+      isDragging.current        = false
+      viewRef.current._dragging = false
+      viewRef.current._mouseX   = -1
+      viewRef.current._mouseY   = -1
+      canvas.style.cursor       = 'crosshair'
     }
 
     const onDblClick = () => {
@@ -131,7 +134,8 @@ export default function ModuleViewer({ mod }: Props) {
       if (e.touches.length === 1) {
         const t = e.touches[0]
         const { dpr } = toCanvas(t.clientX, t.clientY)
-        isDragging.current = true
+        isDragging.current        = true
+        viewRef.current._dragging = true
         dragStart.current  = {
           clientX: t.clientX,
           clientY: t.clientY,
@@ -171,8 +175,9 @@ export default function ModuleViewer({ mod }: Props) {
 
     const onTouchEnd = (e: TouchEvent) => {
       if (e.touches.length === 0) {
-        isDragging.current    = false
-        lastPinchDist.current = null
+        isDragging.current        = false
+        viewRef.current._dragging = false
+        lastPinchDist.current     = null
       }
     }
 

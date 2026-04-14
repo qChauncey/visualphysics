@@ -43,11 +43,13 @@ const CATEGORIES = [
 // ── Component ─────────────────────────────────────────────────────────────
 
 interface Props {
-  /** Called when user navigates or taps close (mobile drawer only) */
+  /** Called when a navigation link is tapped — used by mobile drawer to close */
   onClose?: () => void
+  /** Called when the ‹ collapse button is clicked — desktop only */
+  onCollapse?: () => void
 }
 
-export default function Sidebar({ onClose }: Props) {
+export default function Sidebar({ onClose, onCollapse }: Props) {
   const pathname = usePathname()
   const activeId = pathname.startsWith('/module/')
     ? pathname.split('/')[2]
@@ -59,7 +61,7 @@ export default function Sidebar({ onClose }: Props) {
   return (
     <aside className="w-60 flex-shrink-0 h-screen flex flex-col border-r border-[#f0ede8]/7 bg-[#040404] overflow-y-auto">
 
-      {/* ── Logo + mobile close button ── */}
+      {/* ── Logo + collapse / close buttons ── */}
       <div className="px-6 pt-8 pb-6 border-b border-[#f0ede8]/7 flex items-start justify-between">
         <Link href="/" onClick={onClose} className="block group">
           <h1 className="font-display font-light text-[20px] leading-tight text-[#f0ede8] group-hover:text-[#f0ede8]/80 transition-colors duration-300">
@@ -70,24 +72,36 @@ export default function Sidebar({ onClose }: Props) {
           </p>
         </Link>
 
-        {/* Close button — mobile only */}
-        {onClose && (
-          <button
-            aria-label="Close navigation"
-            onClick={onClose}
-            className="md:hidden mt-1 text-[#f0ede8]/30 hover:text-[#f0ede8]/60 transition-colors duration-200 text-lg leading-none"
-          >
-            ✕
-          </button>
-        )}
+        <div className="flex items-center gap-1 mt-1">
+          {/* Collapse arrow — desktop only */}
+          {onCollapse && (
+            <button
+              aria-label="Collapse sidebar"
+              onClick={onCollapse}
+              className="hidden md:flex items-center justify-center w-6 h-6 text-[#f0ede8]/28 hover:text-[#f0ede8]/65 transition-colors duration-200 text-sm"
+            >
+              ‹
+            </button>
+          )}
+          {/* Close button — mobile only */}
+          {onClose && (
+            <button
+              aria-label="Close navigation"
+              onClick={onClose}
+              className="md:hidden flex items-center justify-center w-6 h-6 text-[#f0ede8]/30 hover:text-[#f0ede8]/60 transition-colors duration-200 text-lg leading-none"
+            >
+              ✕
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── Navigation ── */}
       <nav className="flex-1 px-4 py-5 space-y-5">
         {CATEGORIES.map((cat) => (
           <div key={cat.key}>
-            {/* Category label */}
-            <p className="font-mono text-[7.5px] tracking-[0.28em] text-[#f0ede8]/20 uppercase px-2 mb-2">
+            {/* Category label — readable size */}
+            <p className="font-mono text-[10px] tracking-[0.22em] text-[#f0ede8]/45 uppercase px-2 mb-2">
               {t[cat.key]}
             </p>
 
@@ -140,7 +154,7 @@ export default function Sidebar({ onClose }: Props) {
 
       {/* ── Footer ── */}
       <div className="px-4 py-5 border-t border-[#f0ede8]/7 space-y-px">
-        {/* Theory tree — now live */}
+        {/* Theory tree */}
         <Link
           href="/theory"
           onClick={onClose}
@@ -160,13 +174,13 @@ export default function Sidebar({ onClose }: Props) {
         </Link>
 
         {/* Lang toggle + year */}
-        <div className="flex items-center justify-between px-2 pt-2">
+        <div className="flex items-center justify-between px-2 pt-3">
           <p className="font-mono text-[8px] text-[#f0ede8]/14">
             {new Date().getFullYear()}
           </p>
           <button
             onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')}
-            className="font-mono text-[8px] tracking-[0.18em] text-[#f0ede8]/30 hover:text-[#c8955a] transition-colors duration-200 uppercase"
+            className="font-mono text-[9px] tracking-[0.15em] px-2.5 py-1 border border-[#f0ede8]/18 text-[#f0ede8]/55 hover:text-[#c8955a] hover:border-[#c8955a]/40 transition-colors duration-200 uppercase"
           >
             {t.langToggle}
           </button>
