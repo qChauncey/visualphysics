@@ -23,11 +23,11 @@ export type MathLevel = 1 | 2 | 3  // 1=科普 2=本科 3=研究生
 // ─── Control definitions (auto-generates the parameter panel UI) ───
 
 export type ControlDefinition =
-  | { type: 'slider';   id: string; label: string; min: number; max: number; step: number; default: number }
-  | { type: 'toggle';   id: string; label: string; default: boolean }
-  | { type: 'select';   id: string; label: string; options: { value: string; label: string }[]; default: string }
-  | { type: 'button';   id: string; label: string }
-  | { type: 'body-selector'; id: string; label: string }  // for space module
+  | { type: 'slider';   id: string; label: string; labelEn?: string; min: number; max: number; step: number; default: number }
+  | { type: 'toggle';   id: string; label: string; labelEn?: string; default: boolean }
+  | { type: 'select';   id: string; label: string; labelEn?: string; options: { value: string; label: string; labelEn?: string }[]; default: string }
+  | { type: 'button';   id: string; label: string; labelEn?: string }
+  | { type: 'body-selector'; id: string; label: string; labelEn?: string }  // for space module
 
 export type Params = Record<string, number | boolean | string>
 
@@ -42,6 +42,7 @@ export interface PhysicsModule<S = unknown> {
     title: string
     titleEn: string
     description: string
+    descriptionEn?: string
     theory: TheoryTag[]
     mathLevel: MathLevel
     renderer: RendererType
