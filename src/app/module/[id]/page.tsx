@@ -23,14 +23,14 @@ export default function ModulePage() {
 
   // ── Error ─────────────────────────────────────────────────────────────────
   if (error) return (
-    <AppLayout mainClassName="flex-1 flex items-center justify-center">
+    <AppLayout mainClassName="flex-1 relative flex items-center justify-center">
       <p className="font-mono text-xs text-[#f0ede8]/30">{t.notFound}{id}</p>
     </AppLayout>
   )
 
   // ── Loading ───────────────────────────────────────────────────────────────
   if (!mod) return (
-    <AppLayout mainClassName="flex-1 flex items-center justify-center">
+    <AppLayout mainClassName="flex-1 relative flex items-center justify-center">
       <span className="font-mono text-[10px] tracking-[0.2em] text-[#f0ede8]/20 uppercase animate-pulse">
         {t.loading}
       </span>
@@ -38,45 +38,31 @@ export default function ModulePage() {
   )
 
   // Prefer English metadata when lang=en and fields exist
-  const title       = lang === 'en' && mod.metadata.titleEn       ? mod.metadata.titleEn       : mod.metadata.title
-  const subtitle    = lang === 'en'                                ? mod.metadata.title          : mod.metadata.titleEn
-  const description = lang === 'en' && mod.metadata.descriptionEn ? mod.metadata.descriptionEn : mod.metadata.description
+  const title    = lang === 'en' && mod.metadata.titleEn ? mod.metadata.titleEn : mod.metadata.title
+  const subtitle = lang === 'en' ? mod.metadata.title : (mod.metadata.titleEn ?? '')
 
-  // ── Module ────────────────────────────────────────────────────────────────
+  // ── Full-screen module ────────────────────────────────────────────────────
   return (
-    <AppLayout mainClassName="flex-1 overflow-y-auto">
-      <div className="max-w-4xl mx-auto px-5 sm:px-10 pt-14 sm:pt-12 pb-20">
+    <AppLayout mainClassName="flex-1 relative overflow-hidden">
 
-        {/* ── Header ── */}
-        <div className="mb-10">
-          <h1
-            className="font-display font-light leading-[0.9] text-[#f0ede8] mb-2"
-            style={{ fontSize: 'clamp(28px, 5vw, 72px)' }}
-          >
-            {title}
-          </h1>
-          <p className="font-mono text-[9px] tracking-[0.22em] text-[#c8955a]/55 mb-4 uppercase">
+      {/* Canvas — fills entire main area */}
+      <ModuleViewer mod={mod} />
+
+      {/* Module title overlay — top-left, below hamburger button */}
+      <div className="absolute top-12 left-4 z-20 pointer-events-none select-none">
+        <h1
+          className="font-display font-light text-[#f0ede8]/80 leading-[1.1]"
+          style={{ fontSize: 'clamp(13px, 1.8vw, 22px)' }}
+        >
+          {title}
+        </h1>
+        {subtitle && (
+          <p className="font-mono text-[7px] tracking-[0.22em] text-[#c8955a]/40 mt-0.5 uppercase">
             {subtitle}
           </p>
-          <p className="text-[#f0ede8]/38 text-[13px] leading-[1.75] max-w-lg mb-5">
-            {description}
-          </p>
-          <div className="flex flex-wrap gap-x-5 gap-y-1">
-            {mod.metadata.theory.map((tag) => (
-              <span key={tag} className="font-mono text-[9px] tracking-[0.15em] text-[#f0ede8]/22 uppercase">
-                {tag}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {/* ── Divider ── */}
-        <div className="h-px bg-[#f0ede8]/7 mb-10" />
-
-        {/* ── Module viewer ── */}
-        <ModuleViewer mod={mod} />
-
+        )}
       </div>
+
     </AppLayout>
   )
 }

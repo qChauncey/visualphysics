@@ -12,7 +12,7 @@ export default function TheoryPage() {
     <AppLayout mainClassName="flex-1 flex flex-col overflow-hidden">
 
       {/* ── Header bar ── */}
-      <div className="flex-shrink-0 px-8 pt-10 pb-5 border-b border-[#f0ede8]/7">
+      <div className="flex-shrink-0 px-8 pt-14 pb-5 border-b border-[#f0ede8]/7">
         <h1
           className="font-display font-light text-[#f0ede8] leading-[0.9] mb-1"
           style={{ fontSize: 'clamp(24px, 3.5vw, 52px)' }}
