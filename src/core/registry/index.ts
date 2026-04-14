@@ -40,7 +40,7 @@ export function listModules(): string[] {
 registerModule('double-pendulum',   () => import('@/modules/double-pendulum'))
 registerModule('hydrogen-orbital',  () => import('@/modules/hydrogen-orbital'))
 registerModule('space-scale',       () => import('@/modules/space-scale'))
-// registerModule('double-slit',    () => import('@/modules/double-slit'))
+registerModule('double-slit',       () => import('@/modules/double-slit'))
 // registerModule('island-formula', () => import('@/modules/island-formula'))
 // registerModule('calabi-yau',     () => import('@/modules/calabi-yau'))
 // registerModule('spin-network',   () => import('@/modules/spin-network'))
