@@ -107,6 +107,7 @@ export const NODES: TheoryNode[] = [
     category: 'quantum',
     description: '普朗克引入能量量子化解决黑体辐射，爱因斯坦用光子解释光电效应，量子时代开启。',
     descEn: 'Planck introduces energy quantisation for blackbody radiation; Einstein explains the photoelectric effect with photons.',
+    module: 'blackbody-radiation',
     influences: ['bohr', 'qm'],
   },
   {
@@ -130,7 +131,7 @@ export const NODES: TheoryNode[] = [
     category: 'quantum',
     description: '矩阵力学与波动力学描述微观世界——波函数、测不准原理、概率诠释。',
     descEn: 'Matrix mechanics and wave mechanics describe the microscopic world — wavefunctions, uncertainty principle, probabilistic interpretation.',
-    module: 'hydrogen-orbital',
+    module: 'quantum-tunneling',
     influences: ['double-slit-exp', 'dirac', 'qft'],
   },
   {
@@ -142,7 +143,7 @@ export const NODES: TheoryNode[] = [
     category: 'quantum',
     description: '电子通过双缝产生干涉条纹，观测导致波函数坍缩——量子力学最直观的佯谬。',
     descEn: 'Electrons create interference patterns through double slits; observation collapses the wavefunction — the most vivid quantum paradox.',
-    module: 'double-slit',
+    module: 'quantum-entanglement',
     influences: ['qft'],
   },
   {
@@ -167,6 +168,7 @@ export const NODES: TheoryNode[] = [
     category: 'relativity',
     description: '光速不变原理推翻绝对时空观，揭示时间膨胀、长度收缩与质能等价 E = mc²。',
     descEn: 'The invariance of the speed of light dismantles absolute space and time, revealing time dilation, length contraction, and E = mc².',
+    module: 'minkowski-diagram',
     influences: ['gr', 'dirac'],
   },
   {
@@ -190,7 +192,7 @@ export const NODES: TheoryNode[] = [
     category: 'relativity',
     description: '哈勃观测到星系退行速度正比于距离，宇宙正在膨胀，追溯至大爆炸奇点。',
     descEn: 'Hubble observes galaxies receding at speeds proportional to distance — the universe is expanding, traceable to a Big Bang singularity.',
-    module: 'space-scale',
+    module: 'gravitational-lensing',
     influences: ['inflation'],
   },
   {
@@ -248,7 +250,7 @@ export const NODES: TheoryNode[] = [
     category: 'unified',
     description: '用一维弦取代点粒子，在十维时空中统一量子力学与引力，额外维度卷缩为 Calabi-Yau 流形。',
     descEn: 'Replaces point particles with 1D strings in 10-dimensional spacetime, unifying QM and gravity; extra dimensions compactify as Calabi-Yau manifolds.',
-    module: 'calabi-yau',
+    module: 'string-worldsheet',
     influences: ['mtheory', 'holography'],
   },
   {
