@@ -1,6 +1,8 @@
 // ── Theory Tree Data ───────────────────────────────────────────────────────
 // Historical physics milestones, categorised by discipline.
 // Each node carries optional links to interactive modules.
+// tier 1 = major breakthrough (always visible)
+// tier 2 = secondary milestone (shown when zoom > ~0.75)
 
 export type Category =
   | 'classical'
@@ -21,6 +23,7 @@ export interface TheoryNode {
   descEn:      string
   module?:     string           // linked module id
   influences:  string[]         // ids of nodes this directly influenced
+  tier:        1 | 2            // 1 = always shown, 2 = shown only at higher zoom
 }
 
 export const NODES: TheoryNode[] = [
@@ -35,6 +38,7 @@ export const NODES: TheoryNode[] = [
     description: '《自然哲学的数学原理》奠定运动三定律与万有引力定律，统一天上与地上的力学。',
     descEn: 'Principia Mathematica — three laws of motion and universal gravitation, unifying celestial and terrestrial mechanics.',
     influences: ['chaos', 'lagrange', 'em'],
+    tier: 1,
   },
   {
     id: 'lagrange',
@@ -46,6 +50,19 @@ export const NODES: TheoryNode[] = [
     description: '拉格朗日力学与哈密顿力学以广义坐标重新表述经典力学，为量子力学埋下形式框架。',
     descEn: 'Lagrangian and Hamiltonian reformulations of classical mechanics — the formal backbone that would underpin quantum theory.',
     influences: ['chaos', 'qm'],
+    tier: 1,
+  },
+  {
+    id: 'fourier',
+    year: 1822,
+    title: '傅里叶分析',
+    titleEn: 'Fourier Analysis',
+    person: 'Fourier',
+    category: 'classical',
+    description: '任何周期函数都可以分解为正弦波之和，傅里叶变换成为现代物理的数学语言。',
+    descEn: 'Any periodic function decomposes into sine waves — Fourier transforms became essential mathematics for all of modern physics.',
+    influences: ['em', 'qm'],
+    tier: 2,
   },
   {
     id: 'chaos',
@@ -58,9 +75,22 @@ export const NODES: TheoryNode[] = [
     descEn: 'Poincaré discovers unpredictable behaviour in deterministic systems while studying the three-body problem.',
     module: 'double-pendulum',
     influences: [],
+    tier: 1,
   },
 
   // ── Thermodynamics & Statistical ──────────────────────────────────────
+  {
+    id: 'carnot',
+    year: 1824,
+    title: '卡诺循环',
+    titleEn: 'Carnot Cycle',
+    person: 'Carnot',
+    category: 'thermo',
+    description: '卡诺证明热机效率的理论上限，奠定热力学第二定律的基础。',
+    descEn: 'Carnot proves the theoretical efficiency limit of heat engines — the seed of the second law of thermodynamics.',
+    influences: ['thermo'],
+    tier: 2,
+  },
   {
     id: 'thermo',
     year: 1850,
@@ -71,6 +101,7 @@ export const NODES: TheoryNode[] = [
     description: '热力学第一、第二定律确立能量守恒与熵增原理，引发对统计本质的追问。',
     descEn: 'First and second laws of thermodynamics establish energy conservation and the increase of entropy.',
     influences: ['stat-mech', 'qm-origins'],
+    tier: 1,
   },
   {
     id: 'stat-mech',
@@ -82,9 +113,34 @@ export const NODES: TheoryNode[] = [
     description: '玻尔兹曼将热力学与概率结合，给出熵的微观定义 S = k ln Ω，开创统计物理。',
     descEn: 'Boltzmann connects thermodynamics with probability, defining entropy as S = k ln Ω.',
     influences: ['qm-origins'],
+    tier: 1,
+  },
+  {
+    id: 'brownian',
+    year: 1905,
+    title: '布朗运动',
+    titleEn: 'Brownian Motion',
+    person: 'Einstein · Smoluchowski',
+    category: 'thermo',
+    description: '爱因斯坦从理论上解释花粉粒子的无规则运动，为原子存在提供有力证据。',
+    descEn: 'Einstein theoretically explains the random motion of pollen particles, providing strong evidence for the existence of atoms.',
+    influences: [],
+    tier: 2,
   },
 
   // ── Electromagnetism ──────────────────────────────────────────────────
+  {
+    id: 'faraday',
+    year: 1831,
+    title: '电磁感应',
+    titleEn: 'Electromagnetic Induction',
+    person: 'Faraday',
+    category: 'electro',
+    description: '法拉第发现变化磁场产生电流，奠定电机与发电机原理，启示了场的概念。',
+    descEn: 'Faraday discovers that a changing magnetic field induces current — establishing the principle of motors and generators, and inspiring the concept of fields.',
+    influences: ['em'],
+    tier: 2,
+  },
   {
     id: 'em',
     year: 1865,
@@ -95,6 +151,19 @@ export const NODES: TheoryNode[] = [
     description: '四个方程统一电、磁与光，预言电磁波并揭示光的电磁本质。',
     descEn: 'Four equations unify electricity, magnetism, and light — predicting electromagnetic waves.',
     influences: ['sr', 'qm-origins'],
+    tier: 1,
+  },
+  {
+    id: 'hertz',
+    year: 1887,
+    title: '电磁波实验',
+    titleEn: 'Electromagnetic Waves',
+    person: 'Hertz',
+    category: 'electro',
+    description: '赫兹在实验室中产生和检测无线电波，直接证实麦克斯韦预言的电磁波存在。',
+    descEn: 'Hertz generates and detects radio waves in the laboratory, directly confirming Maxwell\'s predicted electromagnetic waves.',
+    influences: ['qm-origins'],
+    tier: 2,
   },
 
   // ── Quantum Origins ───────────────────────────────────────────────────
@@ -109,6 +178,19 @@ export const NODES: TheoryNode[] = [
     descEn: 'Planck introduces energy quantisation for blackbody radiation; Einstein explains the photoelectric effect with photons.',
     module: 'blackbody-radiation',
     influences: ['bohr', 'qm'],
+    tier: 1,
+  },
+  {
+    id: 'rutherford',
+    year: 1911,
+    title: '原子核模型',
+    titleEn: 'Nuclear Atom',
+    person: 'Rutherford',
+    category: 'quantum',
+    description: '卢瑟福散射实验揭示原子中心存在密集的带正电核，颠覆汤姆逊的枣糕模型。',
+    descEn: 'Rutherford\'s scattering experiment reveals a dense positive nucleus at the atom\'s centre, overthrowing Thomson\'s plum-pudding model.',
+    influences: ['bohr'],
+    tier: 2,
   },
   {
     id: 'bohr',
@@ -121,6 +203,19 @@ export const NODES: TheoryNode[] = [
     descEn: 'Electrons occupy only discrete orbits; atoms absorb or emit photons only at specific transition frequencies.',
     module: 'hydrogen-orbital',
     influences: ['qm'],
+    tier: 1,
+  },
+  {
+    id: 'debroglie',
+    year: 1924,
+    title: '物质波',
+    titleEn: 'Matter Waves',
+    person: 'de Broglie',
+    category: 'quantum',
+    description: '德布罗意提出物质粒子具有波动性，波长 λ = h/p，预言了电子的波动行为。',
+    descEn: 'de Broglie proposes that matter particles have wave properties with λ = h/p — predicting the wave behaviour of electrons.',
+    influences: ['qm'],
+    tier: 2,
   },
   {
     id: 'qm',
@@ -133,6 +228,7 @@ export const NODES: TheoryNode[] = [
     descEn: 'Matrix mechanics and wave mechanics describe the microscopic world — wavefunctions, uncertainty principle, probabilistic interpretation.',
     module: 'quantum-tunneling',
     influences: ['double-slit-exp', 'dirac', 'qft'],
+    tier: 1,
   },
   {
     id: 'double-slit-exp',
@@ -145,6 +241,7 @@ export const NODES: TheoryNode[] = [
     descEn: 'Electrons create interference patterns through double slits; observation collapses the wavefunction — the most vivid quantum paradox.',
     module: 'quantum-entanglement',
     influences: ['qft'],
+    tier: 1,
   },
   {
     id: 'dirac',
@@ -156,6 +253,19 @@ export const NODES: TheoryNode[] = [
     description: '相对论量子方程自然预言反物质与电子自旋，是量子场论的先驱。',
     descEn: 'Relativistic quantum equation naturally predicts antimatter and electron spin — the precursor to quantum field theory.',
     influences: ['qft'],
+    tier: 1,
+  },
+  {
+    id: 'bell',
+    year: 1964,
+    title: 'Bell 不等式',
+    titleEn: 'Bell\'s Theorem',
+    person: 'Bell',
+    category: 'quantum',
+    description: 'Bell 不等式证明量子力学与局域隐变量理论不相容，为量子纠缠的非定域性奠定理论基础。',
+    descEn: 'Bell\'s theorem proves quantum mechanics is incompatible with local hidden-variable theories — establishing the nonlocality of quantum entanglement.',
+    influences: [],
+    tier: 2,
   },
 
   // ── Relativity ────────────────────────────────────────────────────────
@@ -170,6 +280,7 @@ export const NODES: TheoryNode[] = [
     descEn: 'The invariance of the speed of light dismantles absolute space and time, revealing time dilation, length contraction, and E = mc².',
     module: 'minkowski-diagram',
     influences: ['gr', 'dirac'],
+    tier: 1,
   },
   {
     id: 'gr',
@@ -182,6 +293,7 @@ export const NODES: TheoryNode[] = [
     descEn: 'Mass curves spacetime; curvature governs how matter moves — gravity is not a force but the geometry of spacetime.',
     module: 'spacetime-curvature',
     influences: ['cosmology', 'bh', 'lqg', 'string'],
+    tier: 1,
   },
   {
     id: 'cosmology',
@@ -194,6 +306,19 @@ export const NODES: TheoryNode[] = [
     descEn: 'Hubble observes galaxies receding at speeds proportional to distance — the universe is expanding, traceable to a Big Bang singularity.',
     module: 'gravitational-lensing',
     influences: ['inflation'],
+    tier: 1,
+  },
+  {
+    id: 'cmb',
+    year: 1964,
+    title: '宇宙微波背景',
+    titleEn: 'Cosmic Microwave Background',
+    person: 'Penzias · Wilson',
+    category: 'relativity',
+    description: '彭齐亚斯与威尔逊意外发现宇宙微波背景辐射，直接证实大爆炸理论。',
+    descEn: 'Penzias and Wilson accidentally discover the cosmic microwave background radiation — direct confirmation of the Big Bang.',
+    influences: ['inflation'],
+    tier: 2,
   },
   {
     id: 'bh',
@@ -205,6 +330,19 @@ export const NODES: TheoryNode[] = [
     description: '彭罗斯与霍金证明广义相对论在黑洞与大爆炸处必然产生奇点，引发量子引力需求。',
     descEn: 'Penrose and Hawking prove that singularities are inevitable in general relativity — motivating the search for quantum gravity.',
     influences: ['lqg', 'holography'],
+    tier: 1,
+  },
+  {
+    id: 'hawking-rad',
+    year: 1974,
+    title: '霍金辐射',
+    titleEn: 'Hawking Radiation',
+    person: 'Hawking',
+    category: 'relativity',
+    description: '霍金预言黑洞因量子效应辐射热谱，蒸发并引发信息悖论——量子引力的核心谜题。',
+    descEn: 'Hawking predicts black holes radiate thermally due to quantum effects, evaporate, and pose the information paradox — a core puzzle for quantum gravity.',
+    influences: ['holography'],
+    tier: 2,
   },
   {
     id: 'inflation',
@@ -216,6 +354,20 @@ export const NODES: TheoryNode[] = [
     description: '宇宙在大爆炸后极短时间内经历指数膨胀，解释宇宙均匀性与大尺度结构的起源。',
     descEn: 'The universe underwent exponential expansion shortly after the Big Bang, explaining its uniformity and large-scale structure.',
     influences: [],
+    tier: 1,
+  },
+  {
+    id: 'ligo',
+    year: 2015,
+    title: 'LIGO 探测引力波',
+    titleEn: 'LIGO Detects Gravity Waves',
+    person: 'Abbott et al.',
+    category: 'relativity',
+    description: 'LIGO 首次直接探测到双黑洞并合产生的引力波，开启引力波天文学新时代。',
+    descEn: 'LIGO makes the first direct detection of gravitational waves from a binary black hole merger — opening the era of gravitational wave astronomy.',
+    module: 'gravitational-waves',
+    influences: [],
+    tier: 2,
   },
 
   // ── Unified / Quantum Field Theory ────────────────────────────────────
@@ -229,6 +381,19 @@ export const NODES: TheoryNode[] = [
     description: 'QED 以场量子化描述光与物质的相互作用，精确度是人类历史上最高的物理理论。',
     descEn: 'QED describes light–matter interaction via field quantisation — the most precisely tested theory in physics.',
     influences: ['standard-model'],
+    tier: 1,
+  },
+  {
+    id: 'yang-mills',
+    year: 1954,
+    title: 'Yang-Mills 规范场',
+    titleEn: 'Yang-Mills Gauge Theory',
+    person: 'Yang · Mills',
+    category: 'unified',
+    description: 'Yang-Mills 理论将规范不变性推广到非阿贝尔群，成为强力与弱力的数学基础。',
+    descEn: 'Yang-Mills theory generalises gauge invariance to non-Abelian groups — becoming the mathematical foundation for the strong and weak forces.',
+    influences: ['standard-model'],
+    tier: 2,
   },
   {
     id: 'standard-model',
@@ -240,6 +405,20 @@ export const NODES: TheoryNode[] = [
     description: '将电弱统一理论与量子色动力学合并，描述已知所有基本粒子与三种基本力。',
     descEn: 'Electroweak unification merged with QCD — describes all known fundamental particles and three of the four fundamental forces.',
     influences: ['string', 'lqg'],
+    tier: 1,
+  },
+  {
+    id: 'higgs-disc',
+    year: 2012,
+    title: '希格斯玻色子发现',
+    titleEn: 'Higgs Boson Discovery',
+    person: 'ATLAS · CMS at LHC',
+    category: 'unified',
+    description: 'LHC 上的 ATLAS 和 CMS 实验证实希格斯玻色子存在，完成标准模型最后一块拼图。',
+    descEn: 'ATLAS and CMS experiments at the LHC confirm the existence of the Higgs boson — completing the last piece of the Standard Model.',
+    module: 'higgs-field',
+    influences: [],
+    tier: 2,
   },
   {
     id: 'string',
@@ -252,6 +431,7 @@ export const NODES: TheoryNode[] = [
     descEn: 'Replaces point particles with 1D strings in 10-dimensional spacetime, unifying QM and gravity; extra dimensions compactify as Calabi-Yau manifolds.',
     module: 'string-worldsheet',
     influences: ['mtheory', 'holography'],
+    tier: 1,
   },
   {
     id: 'lqg',
@@ -263,6 +443,7 @@ export const NODES: TheoryNode[] = [
     description: '将时空本身量子化为离散的自旋网络，不需要额外维度即可量子化引力。',
     descEn: 'Quantises spacetime itself as discrete spin networks — a background-independent approach to quantum gravity without extra dimensions.',
     influences: [],
+    tier: 1,
   },
   {
     id: 'mtheory',
@@ -274,6 +455,7 @@ export const NODES: TheoryNode[] = [
     description: '五种弦理论在十一维时空中统一为 M 理论，其基本对象是二维膜（M2）与五维膜（M5）。',
     descEn: 'Five string theories unified in 11-dimensional spacetime; fundamental objects are M2- and M5-branes.',
     influences: ['holography'],
+    tier: 1,
   },
   {
     id: 'holography',
@@ -285,6 +467,7 @@ export const NODES: TheoryNode[] = [
     description: 'D+1 维引力理论等价于 D 维边界上的共形场论——全息原理最精确的数学实现。',
     descEn: 'A (D+1)-dimensional gravity theory is dual to a D-dimensional conformal field theory on its boundary — the precise realisation of holography.',
     influences: [],
+    tier: 1,
   },
 ]
 

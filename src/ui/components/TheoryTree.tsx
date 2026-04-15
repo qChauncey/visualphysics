@@ -330,13 +330,32 @@ export default function TheoryTree() {
       }
 
       const W = canvas!.width, H = canvas!.height
+      const zoom = s.zoom, panX = s.panX, panY = s.panY
 
-      // ── Background ───────────────────────────────────────────────────────────
+      // ── Full-screen column backgrounds (screen space, before transform) ────────
+      // Drawn to full canvas height so no blank areas show when panning
       ctx.fillStyle = '#04040c'
       ctx.fillRect(0, 0, W, H)
+      for (const cfg of Object.values(CAT_CONFIG)) {
+        const worldLeft  = lx(cfg.lane) - LANE_W / 2
+        const worldRight = worldLeft + LANE_W
+        const screenLeft  = worldLeft  * zoom + panX
+        const screenRight = worldRight * zoom + panX
+        // Create a vertical gradient for visual richness
+        const grad = ctx.createLinearGradient(screenLeft, 0, screenRight, 0)
+        grad.addColorStop(0,   cfg.color + '00')
+        grad.addColorStop(0.3, cfg.color + '10')
+        grad.addColorStop(0.7, cfg.color + '10')
+        grad.addColorStop(1,   cfg.color + '00')
+        ctx.fillStyle = grad
+        ctx.fillRect(screenLeft, 0, screenRight - screenLeft, H)
+      }
 
       ctx.save()
-      ctx.setTransform(s.zoom, 0, 0, s.zoom, s.panX, s.panY)
+      ctx.setTransform(zoom, 0, 0, zoom, panX, panY)
+
+      // LOD threshold: show tier-2 nodes when zoomed in enough
+      const showTier2 = zoom > 0.72
 
       // ── Stars ─────────────────────────────────────────────────────────────────
       for (const star of STARS) {
@@ -344,12 +363,6 @@ export default function TheoryTree() {
         ctx.arc(star.x, star.y, star.r, 0, Math.PI * 2)
         ctx.fillStyle = `rgba(240,237,232,${star.a})`
         ctx.fill()
-      }
-
-      // ── Column background tints ────────────────────────────────────────────────
-      for (const cfg of Object.values(CAT_CONFIG)) {
-        ctx.fillStyle = cfg.color + '09'
-        ctx.fillRect(lx(cfg.lane) - LANE_W / 2, 0, LANE_W, CANVAS_H)
       }
 
       // ── Year gridlines ─────────────────────────────────────────────────────────
@@ -394,6 +407,8 @@ export default function TheoryTree() {
       for (const e of EDGES) {
         const from = POS_MAP[e.fromId], to = POS_MAP[e.toId]
         if (!from || !to) continue
+        // Hide edges involving tier-2 nodes when zoomed out
+        if (!showTier2 && (from.node.tier === 2 || to.node.tier === 2)) continue
         const conn  = !hovId || (connectedIds.has(e.fromId) && connectedIds.has(e.toId))
         const alpha = hovId ? (conn ? 0.62 : 0.05) : 0.22
         const my    = (from.y + to.y) / 2
@@ -410,6 +425,7 @@ export default function TheoryTree() {
       for (const p of s.particles) {
         const from = POS_MAP[p.edgeFromId], to = POS_MAP[p.edgeToId]
         if (!from || !to) continue
+        if (!showTier2 && (from.node.tier === 2 || to.node.tier === 2)) continue
         const conn = !hovId || (connectedIds.has(p.edgeFromId) && connectedIds.has(p.edgeToId))
         if (hovId && !conn) continue
 
@@ -428,17 +444,24 @@ export default function TheoryTree() {
 
       // ── Nodes ─────────────────────────────────────────────────────────────────
       for (const { node, x, y } of NODE_POS) {
+        // LOD: tier-2 nodes fade in above zoom threshold
+        if (node.tier === 2 && !showTier2) continue
+        const tier2Fade = node.tier === 2 ? Math.min(1, (zoom - 0.72) / 0.15) : 1
+
         const cfg    = CAT_CONFIG[node.category]
         const isHov  = node.id === hovId
         const isSel  = node.id === curSel?.id
         const dimmed = hovId && !connectedIds.has(node.id) && !isHov
-        const mul    = dimmed ? 0.20 : 1
+        const mul    = (dimmed ? 0.20 : 1) * tier2Fade
+
+        // Tier-2 nodes are slightly smaller
+        const r = node.tier === 2 ? NODE_R * 0.72 : NODE_R
 
         // Dashed ring for nodes with interactive modules
         if (node.module) {
           ctx.setLineDash([3, 3])
           ctx.beginPath()
-          ctx.arc(x, y, NODE_R + 5, 0, Math.PI * 2)
+          ctx.arc(x, y, r + 5, 0, Math.PI * 2)
           ctx.strokeStyle = cfg.color + Math.round(0.50 * mul * 255).toString(16).padStart(2, '0')
           ctx.lineWidth   = 1.2
           ctx.stroke()
@@ -448,7 +471,7 @@ export default function TheoryTree() {
         // Selection glow
         if (isSel) {
           ctx.beginPath()
-          ctx.arc(x, y, NODE_R + 9, 0, Math.PI * 2)
+          ctx.arc(x, y, r + 9, 0, Math.PI * 2)
           ctx.fillStyle = cfg.color + '28'
           ctx.fill()
         }
@@ -459,7 +482,7 @@ export default function TheoryTree() {
           ctx.shadowBlur  = 18
           ctx.shadowColor = cfg.color
           ctx.beginPath()
-          ctx.arc(x, y, NODE_R + 1, 0, Math.PI * 2)
+          ctx.arc(x, y, r + 1, 0, Math.PI * 2)
           ctx.strokeStyle = cfg.color + 'CC'
           ctx.lineWidth   = 2
           ctx.stroke()
@@ -468,34 +491,39 @@ export default function TheoryTree() {
 
         // Node body
         ctx.beginPath()
-        ctx.arc(x, y, NODE_R, 0, Math.PI * 2)
+        ctx.arc(x, y, r, 0, Math.PI * 2)
         ctx.fillStyle   = isSel ? cfg.color : '#0b0b14'
         ctx.fill()
         ctx.strokeStyle = cfg.color + Math.round((isSel ? 1 : 0.72) * mul * 255).toString(16).padStart(2, '0')
         ctx.lineWidth   = isSel ? 2.5 : 1.5
         ctx.stroke()
 
-        // Year inside node
-        ctx.font      = 'bold 7px monospace'
-        ctx.textAlign = 'center'
-        ctx.fillStyle = isSel
-          ? 'rgba(4,4,16,0.9)'
-          : cfg.color + Math.round(0.88 * mul * 255).toString(16).padStart(2, '0')
-        ctx.fillText(String(node.year), x, y - 1)
+        // Year inside node (only tier-1 or when selected)
+        if (node.tier === 1 || isSel) {
+          ctx.font      = `bold ${node.tier === 2 ? '6' : '7'}px monospace`
+          ctx.textAlign = 'center'
+          ctx.fillStyle = isSel
+            ? 'rgba(4,4,16,0.9)'
+            : cfg.color + Math.round(0.88 * mul * 255).toString(16).padStart(2, '0')
+          ctx.fillText(String(node.year), x, y + (node.tier === 2 ? 3 : -1))
+        }
 
-        // Person (first name)
-        ctx.font      = '5px monospace'
-        ctx.fillStyle = isSel ? 'rgba(4,4,16,0.55)' : `rgba(240,237,232,${0.28 * mul})`
-        ctx.fillText(node.person.split(' · ')[0], x, y + 10)
+        // Person (first name, tier-1 only or selected)
+        if (node.tier === 1) {
+          ctx.font      = '5px monospace'
+          ctx.fillStyle = isSel ? 'rgba(4,4,16,0.55)' : `rgba(240,237,232,${0.28 * mul})`
+          ctx.fillText(node.person.split(' · ')[0], x, y + 10)
+        }
         ctx.textAlign = 'left'
 
         // Title label to the right
         const title = curLang === 'zh' ? node.title : node.titleEn
-        ctx.font      = `${isSel ? 'bold ' : ''}8.5px monospace`
+        const fontSize = node.tier === 2 ? 7 : 8.5
+        ctx.font      = `${isSel ? 'bold ' : ''}${fontSize}px monospace`
         ctx.fillStyle = isSel ? cfg.color : `rgba(240,237,232,${0.52 * mul})`
         ctx.fillText(
           title.length > 14 ? title.slice(0, 13) + '…' : title,
-          x + NODE_R + 7, y + 4
+          x + r + 6, y + 4
         )
       }
 
