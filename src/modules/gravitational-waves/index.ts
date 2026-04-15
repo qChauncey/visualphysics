@@ -136,10 +136,11 @@ const GravitationalWaves: PhysicsModule<GWState> = {
     const showWave   = params.waveform  as boolean
 
     // Layout
+    const zoom   = (params._zoom as number) ?? 1
     const waveH  = showWave ? H * 0.18 : 0
     const cx     = W / 2
     const cy     = (H - waveH) * 0.52
-    const scale  = Math.min(W, H - waveH) * 0.11
+    const scale  = Math.min(W, H - waveH) * 0.11 * zoom
 
     // Background
     ctx.fillStyle = '#080808'

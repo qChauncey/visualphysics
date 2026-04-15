@@ -263,8 +263,9 @@ const SpacetimeCurvatureModule: PhysicsModule<SpacetimeState> = {
   // ── Tick ──────────────────────────────────────────────────────────────────
 
   tick(state, dt, params): SpacetimeState {
-    const strength = params.strength as number
-    const massVal  = params.massVal  as number
+    const zoom     = (params._zoom as number) ?? 1
+    const strength = (params.strength as number) * Math.max(0.05, zoom)
+    const massVal  = (params.massVal  as number) * Math.max(0.05, zoom)
     const rotate   = params.rotate   as boolean
 
     // Update mass values

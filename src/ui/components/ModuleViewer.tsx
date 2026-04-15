@@ -32,7 +32,7 @@ export default function ModuleViewer({ mod }: Props) {
   const { lang } = useLang()
 
   // ── View state: pan / zoom / mouse ─────────────────────────────────────────
-  const viewRef       = useRef<Params>({ _panX: 0, _panY: 0, _zoom: 1, _mouseX: -1, _mouseY: -1, _dragging: false })
+  const viewRef       = useRef<Params>({ _panX: 0, _panY: 0, _zoom: 1, _mouseX: -1, _mouseY: -1, _dragging: false, _scrollAccum: 0 })
   const isDragging    = useRef(false)
   const dragStart     = useRef({ clientX: 0, clientY: 0, panX: 0, panY: 0, dpr: 1 })
   const lastPinchDist = useRef<number | null>(null)
@@ -69,7 +69,7 @@ export default function ModuleViewer({ mod }: Props) {
 
   // Reset view & controls whenever the module changes
   useEffect(() => {
-    viewRef.current    = { _panX: 0, _panY: 0, _zoom: 1, _mouseX: -1, _mouseY: -1, _dragging: false }
+    viewRef.current    = { _panX: 0, _panY: 0, _zoom: 1, _mouseX: -1, _mouseY: -1, _dragging: false, _scrollAccum: 0 }
     isDragging.current = false
     lastPinchDist.current = null
     setControlsOpen(false)
@@ -142,6 +142,7 @@ export default function ModuleViewer({ mod }: Props) {
       viewRef.current._panX = 0
       viewRef.current._panY = 0
       viewRef.current._zoom = 1
+      viewRef.current._scrollAccum = 0
     }
 
     const applyZoom = (factor: number, clientX: number, clientY: number) => {
@@ -166,6 +167,7 @@ export default function ModuleViewer({ mod }: Props) {
 
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
+      viewRef.current._scrollAccum = ((viewRef.current._scrollAccum as number) ?? 0) + e.deltaY
       applyZoom(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX, e.clientY)
     }
 
