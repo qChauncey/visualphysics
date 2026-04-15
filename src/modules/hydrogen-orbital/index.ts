@@ -62,7 +62,7 @@ const RMAX: Record<string, number> = {
 
 // ── Sampling ──────────────────────────────────────────────────────────────────
 
-const N_PARTICLES = 28000
+const N_PARTICLES = 60000
 
 function sampleCloud(orbital: string): Float32Array {
   const rmax = RMAX[orbital] ?? 20
@@ -191,11 +191,13 @@ const HydrogenOrbitalModule: PhysicsModule<HydrogenState> = {
     geo.setAttribute('color', colAttr)
 
     const mat = new THREE.PointsMaterial({
-      size:          0.28,
-      vertexColors:  true,
+      size:            0.09,
+      vertexColors:    true,
       sizeAttenuation: true,
-      transparent:   true,
-      opacity:       0.65,
+      transparent:     true,
+      opacity:         0.55,
+      blending:        THREE.AdditiveBlending,
+      depthWrite:      false,
     })
     const points = new THREE.Points(geo, mat)
     scene.add(points)
