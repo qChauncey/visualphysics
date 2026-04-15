@@ -56,6 +56,10 @@ type HiggsState = {
   ballVR:      number
   lastTemp:    number
   camAngle:    number
+  azimuth:     number
+  elevation:   number
+  prevMouseX:  number
+  prevMouseY:  number
 }
 
 const rendererStore = new WeakMap<HTMLElement, THREE.WebGLRenderer>()
@@ -265,11 +269,15 @@ const HiggsFieldModule: PhysicsModule<HiggsState> = {
       colAttr,
       ball,
       vevRing,
-      ballR:    initR,
-      ballPhi:  initPhi,
-      ballVR:   0,
-      lastTemp: temp,
-      camAngle: 0,
+      ballR:      initR,
+      ballPhi:    initPhi,
+      ballVR:     0,
+      lastTemp:   temp,
+      camAngle:   0,
+      azimuth:    0,
+      elevation:  Math.PI / 6,   // ~30° above horizontal
+      prevMouseX: -1,
+      prevMouseY: -1,
     }
   },
 
@@ -277,7 +285,7 @@ const HiggsFieldModule: PhysicsModule<HiggsState> = {
 
   tick(state, dt, params): HiggsState {
     const zoom   = (params._zoom as number) ?? 1
-    const temp   = Math.max(0, Math.min(2.5, (params.temp as number) / Math.max(0.1, zoom)))
+    const temp   = Math.max(0, Math.min(2.5, params.temp as number))
     const rotate = params.rotate as boolean
     const wire   = params.wire   as boolean
 
@@ -323,19 +331,37 @@ const HiggsFieldModule: PhysicsModule<HiggsState> = {
     ballMat.color.set(inBroken ? 0xffd700 : 0xff4433)
     ballMat.emissive.set(inBroken ? 0xffd700 : 0xff4433)
 
-    // ── Camera rotation ─────────────────────────────────────────────────────
+    // ── Camera drag (orbit) ─────────────────────────────────────────────────
+    let { azimuth, elevation, prevMouseX, prevMouseY } = state
+    const mouseX = (params._mouseX as number) ?? -1
+    const mouseY = (params._mouseY as number) ?? -1
+    if (params._dragging && mouseX >= 0 && mouseY >= 0 && prevMouseX >= 0 && prevMouseY >= 0) {
+      azimuth   -= (mouseX - prevMouseX) * 0.008
+      elevation  = Math.max(0.02, Math.min(Math.PI * 0.48, elevation + (mouseY - prevMouseY) * 0.006))
+    }
+    prevMouseX = mouseX >= 0 ? mouseX : -1
+    prevMouseY = mouseY >= 0 ? mouseY : -1
+
+    // ── Camera positioning ──────────────────────────────────────────────────
+    const baseDist = Math.sqrt(4.5 * 4.5 + 8.5 * 8.5)
+    const dist = baseDist / Math.max(0.1, zoom)
     if (rotate) {
       camAngle += dt * 0.3
-      const dist = Math.sqrt(0 * 0 + 4.5 * 4.5 + 8.5 * 8.5)
       state.camera.position.set(
-        Math.sin(camAngle) * dist,
-        4.5,
-        Math.cos(camAngle) * dist,
+        Math.sin(camAngle) * dist * Math.cos(elevation),
+        dist * Math.sin(elevation),
+        Math.cos(camAngle) * dist * Math.cos(elevation),
       )
-      state.camera.lookAt(0, 0.2, 0)
+    } else {
+      state.camera.position.set(
+        dist * Math.cos(elevation) * Math.sin(azimuth),
+        dist * Math.sin(elevation),
+        dist * Math.cos(elevation) * Math.cos(azimuth),
+      )
     }
+    state.camera.lookAt(0, 0.2, 0)
 
-    return { ...state, ballR, ballPhi, ballVR, lastTemp, camAngle }
+    return { ...state, ballR, ballPhi, ballVR, lastTemp, camAngle, azimuth, elevation, prevMouseX, prevMouseY }
   },
 
   // ── Render ────────────────────────────────────────────────────────────────

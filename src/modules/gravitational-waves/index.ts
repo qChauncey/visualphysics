@@ -21,6 +21,10 @@ type GWState = {
   strain:      number[]      // last 300 strain values for waveform display
   merged:      boolean
   mergeFlashT: number        // seconds since merger (for flash decay); -1 = not merging
+  tiltX:       number        // view elevation (0=top, π/3=oblique)
+  azimuth:     number        // view rotation
+  prevMouseX:  number
+  prevMouseY:  number
 }
 
 // ── Module-level audio (outside immutable state) ───────────────────────────────
@@ -77,7 +81,35 @@ function makeInitialState(): GWState {
     strain:      [],
     merged:      false,
     mergeFlashT: -1,
+    tiltX:       0.55,        // default: slightly oblique view
+    azimuth:     0,
+    prevMouseX:  -1,
+    prevMouseY:  -1,
   }
+}
+
+// ── 3D projection helpers ──────────────────────────────────────────────────────
+
+/**
+ * Project a world-space point (wx, wy_orbital=0, wz) through tilt + azimuth
+ * onto canvas coords, centred at (cx, cy) with given scale.
+ * tiltX: 0=top view, π/2=side view
+ * azimuth: rotation around vertical
+ */
+function project3D(
+  wx: number, wz: number,
+  cx: number, cy: number,
+  scale: number,
+  tiltX: number,
+  azimuth: number,
+): [number, number] {
+  // rotate around Y axis by azimuth
+  const rx = wx * Math.cos(azimuth) - wz * Math.sin(azimuth)
+  const rz = wx * Math.sin(azimuth) + wz * Math.cos(azimuth)
+  // apply tilt: compress z into y (oblique projection)
+  const sx = cx + rx * scale
+  const sy = cy + rz * scale * Math.cos(tiltX)
+  return [sx, sy]
 }
 
 // ── Spacetime grid drawing ─────────────────────────────────────────────────────
@@ -86,46 +118,54 @@ function drawSpacetimeGrid(
   ctx:       CanvasRenderingContext2D,
   W:         number,
   H:         number,
-  x1:        number,   // body 1 canvas px
-  y1:        number,
-  x2:        number,   // body 2 canvas px
-  y2:        number,
+  cx:        number,
+  cy:        number,
   r:         number,   // orbital separation (world units)
   chirpMass: number,
   scale:     number,
+  tiltX:     number,
+  azimuth:   number,
 ): void {
-  const strength = Math.min(9000, chirpMass * chirpMass * scale * scale * 0.65 / (r * r + 0.5))
-  const N = 18, SEGS = 55
+  // Grid extends ±gridR world units around centre
+  const gridR   = 6
+  const N       = 28   // grid lines per axis (dense)
+  const SEGS    = 60   // segments per grid line
+  const strength = Math.min(1.4, chirpMass * chirpMass * 0.18 / (r * r + 0.3))
 
-  function displace(px: number, py: number): [number, number] {
-    const d1x = x1 - px, d1y = y1 - py, d1sq = d1x*d1x + d1y*d1y + 1
-    const d2x = x2 - px, d2y = y2 - py, d2sq = d2x*d2x + d2y*d2y + 1
-    return [
-      px + strength * (d1x / d1sq + d2x / d2sq),
-      py + strength * (d1y / d1sq + d2y / d2sq),
-    ]
+  // Warp world coords based on gravitational potential of the two bodies
+  function displace(wx: number, wz: number): [number, number] {
+    const dx1 = wx, dz1 = wz              // body pair at centre
+    const d1 = Math.sqrt(dx1*dx1 + dz1*dz1) + 0.5
+    const pull = strength / (d1 * d1) * 0.6
+    const wx2 = wx + pull * dx1 / d1
+    const wz2 = wz + pull * dz1 / d1
+    return project3D(wx2, wz2, cx, cy, scale, tiltX, azimuth)
   }
 
   ctx.save()
-  ctx.strokeStyle = 'rgba(50, 100, 160, 0.22)'
-  ctx.lineWidth   = 0.65
+  ctx.strokeStyle = 'rgba(60, 120, 200, 0.38)'
+  ctx.lineWidth   = 0.8
 
+  // Horizontal lines (constant wz)
   for (let i = 0; i <= N; i++) {
-    const baseY = (i / N) * H
+    const wz = -gridR + (i / N) * gridR * 2
     ctx.beginPath()
     for (let j = 0; j <= SEGS; j++) {
-      const [dx, dy] = displace((j / SEGS) * W, baseY)
-      j === 0 ? ctx.moveTo(dx, dy) : ctx.lineTo(dx, dy)
+      const wx = -gridR + (j / SEGS) * gridR * 2
+      const [px, py] = displace(wx, wz)
+      j === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py)
     }
     ctx.stroke()
   }
 
+  // Vertical lines (constant wx)
   for (let i = 0; i <= N; i++) {
-    const baseX = (i / N) * W
+    const wx = -gridR + (i / N) * gridR * 2
     ctx.beginPath()
     for (let j = 0; j <= SEGS; j++) {
-      const [dx, dy] = displace(baseX, (j / SEGS) * H)
-      j === 0 ? ctx.moveTo(dx, dy) : ctx.lineTo(dx, dy)
+      const wz = -gridR + (j / SEGS) * gridR * 2
+      const [px, py] = displace(wx, wz)
+      j === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py)
     }
     ctx.stroke()
   }
@@ -159,12 +199,23 @@ const GravitationalWaves: PhysicsModule<GWState> = {
     const speed     = params.speed     as number
     const audio     = (params.audio    as boolean) ?? false
 
+    // ── Camera drag ───────────────────────────────────────────────────────────
+    let { tiltX, azimuth, prevMouseX, prevMouseY } = state
+    const mouseX = (params._mouseX as number) ?? -1
+    const mouseY = (params._mouseY as number) ?? -1
+    if (params._dragging && mouseX >= 0 && mouseY >= 0 && prevMouseX >= 0 && prevMouseY >= 0) {
+      azimuth -= (mouseX - prevMouseX) * 0.008
+      tiltX    = Math.max(0, Math.min(Math.PI / 2.2, tiltX - (mouseY - prevMouseY) * 0.006))
+    }
+    prevMouseX = mouseX >= 0 ? mouseX : -1
+    prevMouseY = mouseY >= 0 ? mouseY : -1
+
     // ── Post-merger reset ─────────────────────────────────────────────────────
     if (state.merged) {
       silenceAudio()
       const flashT = state.mergeFlashT + dt
-      if (flashT > 1.5) return makeInitialState()
-      return { ...state, mergeFlashT: flashT }
+      if (flashT > 1.5) return { ...makeInitialState(), tiltX, azimuth }
+      return { ...state, mergeFlashT: flashT, tiltX, azimuth, prevMouseX, prevMouseY }
     }
 
     // ── Sub-step integration (8 steps for stability) ──────────────────────────
@@ -207,7 +258,7 @@ const GravitationalWaves: PhysicsModule<GWState> = {
       rings.push({ r: 0, amp: Math.min(4, chirpMass * chirpMass / r), born: t })
     }
 
-    return { ...state, r, phi, t, rings, strain, merged: false }
+    return { ...state, r, phi, t, rings, strain, merged: false, tiltX, azimuth, prevMouseX, prevMouseY }
   },
 
   render(state, canvas, params) {
@@ -221,11 +272,13 @@ const GravitationalWaves: PhysicsModule<GWState> = {
     const showWave   = params.waveform  as boolean
     const showGrid   = (params.showGrid as boolean) ?? true
     const zoom       = (params._zoom    as number)  ?? 1
+    const tiltX      = state.tiltX
+    const azimuth    = state.azimuth
 
     const waveH = showWave ? H * 0.18 : 0
     const mainH = H - waveH
     const cx    = W / 2
-    const cy    = mainH * 0.50
+    const cy    = mainH * 0.48
     const scale = Math.min(W, mainH) * 0.11 * zoom
 
     // Background
@@ -242,17 +295,20 @@ const GravitationalWaves: PhysicsModule<GWState> = {
 
     const r   = state.r
     const phi = state.phi
-    const x1  = cx + (r / 2) * Math.cos(phi) * scale
-    const y1  = cy + (r / 2) * Math.sin(phi) * scale
-    const x2  = cx - (r / 2) * Math.cos(phi) * scale
-    const y2  = cy - (r / 2) * Math.sin(phi) * scale
+
+    // World positions of the two bodies (orbital plane = xz plane)
+    const w1x = (r / 2) * Math.cos(phi), w1z = (r / 2) * Math.sin(phi)
+    const w2x = -(r / 2) * Math.cos(phi), w2z = -(r / 2) * Math.sin(phi)
+
+    const [x1, y1] = project3D(w1x, w1z, cx, cy, scale, tiltX, azimuth)
+    const [x2, y2] = project3D(w2x, w2z, cx, cy, scale, tiltX, azimuth)
 
     // ── Spacetime grid ────────────────────────────────────────────────────────
     if (showGrid) {
-      drawSpacetimeGrid(ctx, W, mainH, x1, y1, x2, y2, r, chirpMass, scale)
+      drawSpacetimeGrid(ctx, W, mainH, cx, cy, r, chirpMass, scale, tiltX, azimuth)
     }
 
-    // ── Wave rings ────────────────────────────────────────────────────────────
+    // ── Wave rings (ellipses under tilt) ──────────────────────────────────────
     ctx.save()
     const time = state.t
     for (const ring of state.rings) {
@@ -264,9 +320,11 @@ const GravitationalWaves: PhysicsModule<GWState> = {
       const rr    = Math.round(220 * (1 - t_col) + 10  * t_col)
       const gg    = Math.round(160 * (1 - t_col) + 30  * t_col)
       const bb    = Math.round(90  * (1 - t_col) + 60  * t_col)
+      const rPx   = ring.r * scale
 
+      // Draw ellipse approximating the ring under tilt
       ctx.beginPath()
-      ctx.arc(cx, cy, ring.r * scale, 0, Math.PI * 2)
+      ctx.ellipse(cx, cy, rPx, rPx * Math.abs(Math.cos(tiltX)), azimuth, 0, Math.PI * 2)
       ctx.setLineDash([10, 6])
       ctx.lineDashOffset = -(time * 50 + ring.born * 12) % 16
       ctx.strokeStyle    = `rgba(${rr},${gg},${bb},${opacity})`
@@ -277,8 +335,9 @@ const GravitationalWaves: PhysicsModule<GWState> = {
     ctx.restore()
 
     // ── Orbital path ─────────────────────────────────────────────────────────
+    const orbitR = (r / 2) * scale
     ctx.beginPath()
-    ctx.arc(cx, cy, (r / 2) * scale, 0, Math.PI * 2)
+    ctx.ellipse(cx, cy, orbitR, orbitR * Math.abs(Math.cos(tiltX)), azimuth, 0, Math.PI * 2)
     ctx.setLineDash([4, 8])
     ctx.strokeStyle = 'rgba(240,237,232,0.14)'
     ctx.lineWidth   = 0.8

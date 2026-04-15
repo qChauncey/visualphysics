@@ -37,8 +37,13 @@ type SpacetimeState = {
   masses:     Mass[]
   dragPlane:  THREE.Plane        // invisible horizontal plane for raycasting
   raycaster:  THREE.Raycaster
-  dragIdx:    number             // index of mass being dragged (-1 = none)
+  dragIdx:    number             // index of mass being dragged (-1=none, -2=orbit drag)
   camAngle:   number
+  azimuth:    number             // camera azimuth (radians)
+  elevation:  number             // camera elevation (radians)
+  baseDist:   number             // base camera distance
+  prevMouseX: number
+  prevMouseY: number
 }
 
 const rendererStore = new WeakMap<HTMLElement, THREE.WebGLRenderer>()
@@ -254,9 +259,14 @@ const SpacetimeCurvatureModule: PhysicsModule<SpacetimeState> = {
       gridGeo: geo, posAttr, colAttr, basePos,
       masses,
       dragPlane,
-      raycaster: new THREE.Raycaster(),
-      dragIdx:   -1,
-      camAngle:  0,
+      raycaster:  new THREE.Raycaster(),
+      dragIdx:    -1,
+      camAngle:   0,
+      azimuth:    0,
+      elevation:  Math.PI / 7,   // ~26° above horizontal
+      baseDist:   15,
+      prevMouseX: -1,
+      prevMouseY: -1,
     }
   },
 
@@ -264,8 +274,8 @@ const SpacetimeCurvatureModule: PhysicsModule<SpacetimeState> = {
 
   tick(state, dt, params): SpacetimeState {
     const zoom     = (params._zoom as number) ?? 1
-    const strength = (params.strength as number) * Math.max(0.05, zoom)
-    const massVal  = (params.massVal  as number) * Math.max(0.05, zoom)
+    const strength = params.strength as number
+    const massVal  = params.massVal  as number
     const rotate   = params.rotate   as boolean
 
     // Update mass values
@@ -282,23 +292,12 @@ const SpacetimeCurvatureModule: PhysicsModule<SpacetimeState> = {
       mass.mesh.position.set(mass.x, y + r, mass.z)
     })
 
-    // Camera orbit (optional)
-    let camAngle = state.camAngle
-    if (rotate) {
-      camAngle += dt * 0.12
-      const dist = 15
-      state.camera.position.set(
-        Math.sin(camAngle) * dist,
-        9,
-        Math.cos(camAngle) * dist,
-      )
-      state.camera.lookAt(0, -1, 0)
-    }
-
-    // Handle mouse drag — project mouse NDC onto dragPlane
+    // Handle mouse interaction
     const mouseX = params._mouseX as number ?? -1
     const mouseY = params._mouseY as number ?? -1
     const el     = state.renderer.domElement
+
+    let { azimuth, elevation, baseDist, prevMouseX, prevMouseY, dragIdx, camAngle } = state
 
     if (mouseX >= 0 && mouseY >= 0) {
       const ndcX =  (mouseX / el.width)  * 2 - 1
@@ -307,7 +306,7 @@ const SpacetimeCurvatureModule: PhysicsModule<SpacetimeState> = {
 
       if (!params._dragging) {
         // Not dragging: reset drag target and update hover highlights
-        state.dragIdx = -1
+        dragIdx = -1
         const hits = state.raycaster.intersectObjects(state.masses.map((m) => m.mesh))
         state.masses.forEach((m, i) => {
           const mat     = m.mesh.material as THREE.MeshStandardMaterial
@@ -316,24 +315,52 @@ const SpacetimeCurvatureModule: PhysicsModule<SpacetimeState> = {
           ;(state.masses[i] as Mass & { hovered?: boolean }).hovered = hovered
         })
       } else {
-        // Dragging: on the first frame, pick up whichever mass is currently hovered
-        if (state.dragIdx === -1) {
-          state.dragIdx = state.masses.findIndex((m) => (m as Mass & { hovered?: boolean }).hovered)
+        // First frame of drag: decide mass drag vs camera orbit
+        if (dragIdx === -1) {
+          const hoveredIdx = state.masses.findIndex((m) => (m as Mass & { hovered?: boolean }).hovered)
+          dragIdx = hoveredIdx >= 0 ? hoveredIdx : -2   // -2 = camera orbit
         }
-        if (state.dragIdx >= 0) {
+        if (dragIdx >= 0) {
+          // Mass drag: project onto horizontal plane
           const target = new THREE.Vector3()
           state.raycaster.ray.intersectPlane(state.dragPlane, target)
           const clamp = GRID_SIZE * 0.9
-          state.masses[state.dragIdx].x = Math.max(-clamp, Math.min(clamp, target.x))
-          state.masses[state.dragIdx].z = Math.max(-clamp, Math.min(clamp, target.z))
+          state.masses[dragIdx].x = Math.max(-clamp, Math.min(clamp, target.x))
+          state.masses[dragIdx].z = Math.max(-clamp, Math.min(clamp, target.z))
+        } else if (dragIdx === -2 && prevMouseX >= 0 && prevMouseY >= 0) {
+          // Camera orbit: update azimuth/elevation from mouse delta
+          const dmx = mouseX - prevMouseX
+          const dmy = mouseY - prevMouseY
+          azimuth   -= dmx * 0.008
+          elevation  = Math.max(0.05, Math.min(Math.PI * 0.45, elevation + dmy * 0.005))
         }
       }
     } else if (!params._dragging) {
-      // Mouse left canvas: reset drag
-      state.dragIdx = -1
+      dragIdx = -1
     }
 
-    return { ...state, camAngle }
+    prevMouseX = mouseX >= 0 ? mouseX : -1
+    prevMouseY = mouseY >= 0 ? mouseY : -1
+
+    // Camera positioning: zoom controls distance, azimuth/elevation controls angle
+    const dist = baseDist / Math.max(0.1, zoom)
+    if (rotate) {
+      camAngle += dt * 0.12
+      state.camera.position.set(
+        Math.sin(camAngle) * dist * Math.cos(elevation),
+        dist * Math.sin(elevation),
+        Math.cos(camAngle) * dist * Math.cos(elevation),
+      )
+    } else {
+      state.camera.position.set(
+        dist * Math.cos(elevation) * Math.sin(azimuth),
+        dist * Math.sin(elevation),
+        dist * Math.cos(elevation) * Math.cos(azimuth),
+      )
+    }
+    state.camera.lookAt(0, -1, 0)
+
+    return { ...state, azimuth, elevation, baseDist, prevMouseX, prevMouseY, dragIdx, camAngle }
   },
 
   // ── Render ────────────────────────────────────────────────────────────────
