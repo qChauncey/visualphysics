@@ -9,9 +9,10 @@ import * as THREE from 'three'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const N_DISK = 8000
-const N_JET  = 2000
-const N_STARS = 2000
+const N_DISK   = 18000
+const N_INFALL = 5000
+const N_JET    = 2000
+const N_STARS  = 2000
 
 // ── Black hole parameter tables ───────────────────────────────────────────────
 
@@ -78,27 +79,32 @@ const BH_TABLE: Record<string, BHParams> = {
 // ── State ─────────────────────────────────────────────────────────────────────
 
 type BHState = {
-  renderer:   THREE.WebGLRenderer
-  scene:      THREE.Scene
-  camera:     THREE.PerspectiveCamera
-  bhGroup:    THREE.Group
-  diskPts:    THREE.Points
-  diskPos:    Float32Array
-  diskAngle:  Float32Array
-  diskOmega:  Float32Array
-  diskR:      Float32Array          // stored radius per particle
-  jetPts1?:   THREE.Points
-  jetPts2?:   THREE.Points
-  jetPos1?:   Float32Array
-  jetPos2?:   Float32Array
-  jetT1?:     Float32Array
-  jetT2?:     Float32Array
-  t:          number
-  azimuth:    number
-  elevation:  number
-  prevMouseX: number
-  prevMouseY: number
-  lastBHType: string
+  renderer:    THREE.WebGLRenderer
+  scene:       THREE.Scene
+  camera:      THREE.PerspectiveCamera
+  bhGroup:     THREE.Group
+  diskPts:     THREE.Points
+  diskPos:     Float32Array
+  diskAngle:   Float32Array
+  diskOmega:   Float32Array
+  diskR:       Float32Array
+  infallPts:   THREE.Points         // infalling spiral particles
+  infallPos:   Float32Array
+  infallAngle: Float32Array
+  infallT:     Float32Array         // phase 0→1 (outer→inner)
+  infallR:     Float32Array         // base radius per particle
+  jetPts1?:    THREE.Points
+  jetPts2?:    THREE.Points
+  jetPos1?:    Float32Array
+  jetPos2?:    Float32Array
+  jetT1?:      Float32Array
+  jetT2?:      Float32Array
+  t:           number
+  azimuth:     number
+  elevation:   number
+  prevMouseX:  number
+  prevMouseY:  number
+  lastBHType:  string
 }
 
 const rendererStore = new WeakMap<HTMLElement, THREE.WebGLRenderer>()
@@ -262,16 +268,74 @@ function buildDisk(bhType: string): {
   diskGeo.setAttribute('color', new THREE.BufferAttribute(diskCol, 3))
 
   const diskMat  = new THREE.PointsMaterial({
-    size:            0.05,
+    size:            0.06,
     vertexColors:    true,
     sizeAttenuation: true,
     transparent:     true,
-    opacity:         0.75,
+    opacity:         0.85,
+    blending:        THREE.AdditiveBlending,
     depthWrite:      false,
   })
   const diskPts  = new THREE.Points(diskGeo, diskMat)
 
   return { diskPts, diskPos, diskAngle, diskOmega, diskR }
+}
+
+function buildInfall(bhType: string): {
+  infallPts:   THREE.Points
+  infallPos:   Float32Array
+  infallAngle: Float32Array
+  infallT:     Float32Array
+  infallR:     Float32Array
+} {
+  const bh      = BH_TABLE[bhType] ?? BH_TABLE['schwarzschild']
+  const r_inner = bh.ehR * 1.05
+  const r_outer = bh.iscoR * 2.8
+
+  const pos   = new Float32Array(N_INFALL * 3)
+  const angle = new Float32Array(N_INFALL)
+  const t     = new Float32Array(N_INFALL)
+  const rArr  = new Float32Array(N_INFALL)
+  const col   = new Float32Array(N_INFALL * 3)
+
+  // hot white near EH, bright orange at outer edge
+  const cHot  = new THREE.Color(0xffffff)
+  const cWarm = new THREE.Color(0xffaa44)
+
+  for (let i = 0; i < N_INFALL; i++) {
+    const ti    = Math.random()           // phase along infall
+    const r     = r_outer * (1 - ti) + r_inner * ti
+    const ang   = Math.random() * Math.PI * 2
+    const h     = (Math.random() - 0.5) * r * 0.08 * (1 - ti * 0.7)
+    pos[i*3]     = Math.cos(ang) * r
+    pos[i*3 + 1] = h
+    pos[i*3 + 2] = Math.sin(ang) * r
+    angle[i] = ang
+    t[i]     = ti
+    rArr[i]  = r
+
+    const c  = cWarm.clone().lerp(cHot, ti)
+    const br = 0.6 + 0.4 * ti             // brighter near BH
+    col[i*3] = c.r * br; col[i*3+1] = c.g * br; col[i*3+2] = c.b * br
+  }
+
+  const geo    = new THREE.BufferGeometry()
+  const posAttr = new THREE.BufferAttribute(pos, 3)
+  posAttr.setUsage(THREE.DynamicDrawUsage)
+  geo.setAttribute('position', posAttr)
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3))
+
+  const mat = new THREE.PointsMaterial({
+    size:            0.07,
+    vertexColors:    true,
+    sizeAttenuation: true,
+    transparent:     true,
+    opacity:         0.90,
+    blending:        THREE.AdditiveBlending,
+    depthWrite:      false,
+  })
+
+  return { infallPts: new THREE.Points(geo, mat), infallPos: pos, infallAngle: angle, infallT: t, infallR: rArr }
 }
 
 function buildJets(bhType: string): {
@@ -389,6 +453,10 @@ const SchwarzschildModule: PhysicsModule<BHState> = {
     const { diskPts, diskPos, diskAngle, diskOmega, diskR } = buildDisk(bhType)
     scene.add(diskPts)
 
+    // ── Infalling spiral particles ────────────────────────────────────────────
+    const { infallPts, infallPos, infallAngle, infallT, infallR } = buildInfall(bhType)
+    scene.add(infallPts)
+
     // ── Jets (Kerr / Kerr-Newman) ─────────────────────────────────────────────
     let jetPts1: THREE.Points | undefined
     let jetPts2: THREE.Points | undefined
@@ -407,19 +475,20 @@ const SchwarzschildModule: PhysicsModule<BHState> = {
       scene.add(jetPts2)
     }
 
-    // ── Camera ────────────────────────────────────────────────────────────────
+    // ── Camera — near-equatorial view so disk appears centred ─────────────────
     const camera = new THREE.PerspectiveCamera(45, el.width / el.height, 0.05, 500)
-    camera.position.set(0, 6, 16)
+    camera.position.set(0, 3, 16)
     camera.lookAt(0, 0, 0)
 
     return {
       renderer, scene, camera,
       bhGroup,
       diskPts, diskPos, diskAngle, diskOmega, diskR,
+      infallPts, infallPos, infallAngle, infallT, infallR,
       jetPts1, jetPts2, jetPos1, jetPos2, jetT1, jetT2,
       t:          0,
       azimuth:    0,
-      elevation:  0.37,
+      elevation:  0.18,
       prevMouseX: -1,
       prevMouseY: -1,
       lastBHType: bhType,
@@ -439,15 +508,18 @@ const SchwarzschildModule: PhysicsModule<BHState> = {
 
     // ── BH type switch ─────────────────────────────────────────────────────────
     if (bhType !== state.lastBHType) {
-      // Remove old BH geometry and jets from scene
+      // Remove old geometry from scene
       state.scene.remove(state.bhGroup)
       state.scene.remove(state.diskPts)
+      state.scene.remove(state.infallPts)
       if (state.jetPts1) state.scene.remove(state.jetPts1)
       if (state.jetPts2) state.scene.remove(state.jetPts2)
 
       // Dispose old geometries
       state.diskPts.geometry.dispose()
       ;(state.diskPts.material as THREE.Material).dispose()
+      state.infallPts.geometry.dispose()
+      ;(state.infallPts.material as THREE.Material).dispose()
       if (state.jetPts1) {
         state.jetPts1.geometry.dispose()
         ;(state.jetPts1.material as THREE.Material).dispose()
@@ -463,6 +535,9 @@ const SchwarzschildModule: PhysicsModule<BHState> = {
 
       const { diskPts, diskPos, diskAngle, diskOmega, diskR } = buildDisk(bhType)
       state.scene.add(diskPts)
+
+      const { infallPts, infallPos, infallAngle, infallT, infallR } = buildInfall(bhType)
+      state.scene.add(infallPts)
 
       const newBH = BH_TABLE[bhType] ?? BH_TABLE['schwarzschild']
       let jetPts1: THREE.Points | undefined
@@ -487,6 +562,11 @@ const SchwarzschildModule: PhysicsModule<BHState> = {
       state.diskAngle  = diskAngle
       state.diskOmega  = diskOmega
       state.diskR      = diskR
+      state.infallPts  = infallPts
+      state.infallPos  = infallPos
+      state.infallAngle = infallAngle
+      state.infallT    = infallT
+      state.infallR    = infallR
       state.jetPts1    = jetPts1
       state.jetPts2    = jetPts2
       state.jetPos1    = jetPos1
@@ -551,6 +631,37 @@ const SchwarzschildModule: PhysicsModule<BHState> = {
       // Y (height) stays unchanged — set at init time
     }
     posAttr.needsUpdate = true
+
+    // ── Infalling spiral update ────────────────────────────────────────────────
+    {
+      const bhi     = BH_TABLE[bhType] ?? BH_TABLE['schwarzschild']
+      const r_inner = bhi.ehR * 1.05
+      const r_outer = bhi.iscoR * 2.8
+      const infAttr = state.infallPts.geometry.getAttribute('position') as THREE.BufferAttribute
+      const INFALL_SPEED = 0.055 * speed  // full infall in ~18 s at speed=1
+
+      for (let i = 0; i < N_INFALL; i++) {
+        state.infallT[i] += safeDt * INFALL_SPEED * (1 + state.infallT[i] * 1.8) // accelerate near EH
+
+        if (state.infallT[i] >= 1) {
+          // Respawn at outer edge with new random angle
+          state.infallT[i]     = 0
+          state.infallAngle[i] = Math.random() * Math.PI * 2
+        }
+
+        const ti  = state.infallT[i]
+        const r   = r_outer * (1 - ti) + r_inner * ti
+        // Orbit faster as r shrinks (Keplerian + angular momentum conservation)
+        const omega = Math.pow(r_outer / Math.max(r, 0.1), 1.5) * (1 / Math.pow(r_outer, 1.5))
+        state.infallAngle[i] += omega * safeDt * speed * 0.45
+        const h = state.infallPos[i * 3 + 1] * (1 - safeDt * 0.5)  // collapse toward equator
+
+        state.infallPos[i * 3]     = Math.cos(state.infallAngle[i]) * r
+        state.infallPos[i * 3 + 1] = h
+        state.infallPos[i * 3 + 2] = Math.sin(state.infallAngle[i]) * r
+      }
+      infAttr.needsUpdate = true
+    }
 
     // ── Jet update (Kerr / Kerr-Newman) ───────────────────────────────────────
     const bh    = BH_TABLE[bhType] ?? BH_TABLE['schwarzschild']

@@ -50,6 +50,7 @@ type HiggsState = {
   posAttr:     THREE.BufferAttribute
   colAttr:     THREE.BufferAttribute
   ball:        THREE.Mesh
+  vevRing:     THREE.Mesh
   ballR:       number
   ballPhi:     number
   ballVR:      number
@@ -213,15 +214,31 @@ const HiggsFieldModule: PhysicsModule<HiggsState> = {
     const wireMesh = new THREE.Mesh(geo, wireMat)
     scene.add(wireMesh)
 
-    // Ball
-    const ballGeo = new THREE.SphereGeometry(0.12, 20, 16)
+    // Ball — large bright sphere so it's easy to track
+    const ballGeo = new THREE.SphereGeometry(0.18, 24, 16)
     const ballMat = new THREE.MeshStandardMaterial({
-      color:             0xffffff,
-      emissive:          new THREE.Color(0xffffff),
-      emissiveIntensity: 0.8,
+      color:             0xffd700,
+      emissive:          new THREE.Color(0xffd700),
+      emissiveIntensity: 1.2,
+      roughness:         0.1,
     })
     const ball = new THREE.Mesh(ballGeo, ballMat)
+    // Glow halo around ball
+    const ballGlow = new THREE.Mesh(
+      new THREE.SphereGeometry(0.30, 16, 8),
+      new THREE.MeshBasicMaterial({ color: 0xffd700, transparent: true, opacity: 0.12, side: THREE.BackSide }),
+    )
+    ball.add(ballGlow)
     scene.add(ball)
+
+    // VEV ring — glowing circle at the trough radius (r = V_VEV = 1)
+    const vevRing = new THREE.Mesh(
+      new THREE.TorusGeometry(V_VEV, 0.025, 8, 80),
+      new THREE.MeshBasicMaterial({ color: 0xc8955a, transparent: true, opacity: 0.55 }),
+    )
+    vevRing.rotation.x = Math.PI / 2
+    vevRing.position.y = clamp(vEff(V_VEV, temp), Y_MIN, Y_MAX)
+    scene.add(vevRing)
 
     // Initial ball position — start near the origin so it can roll
     const initR   = 0.1
@@ -233,10 +250,10 @@ const HiggsFieldModule: PhysicsModule<HiggsState> = {
       initR * Math.sin(initPhi),
     )
 
-    // Camera
+    // Camera — slightly elevated to show the well clearly, centred on hat rim
     const camera = new THREE.PerspectiveCamera(45, el.width / el.height, 0.1, 200)
-    camera.position.set(0, 5, 7)
-    camera.lookAt(0, 0.5, 0)
+    camera.position.set(0, 4.5, 8.5)
+    camera.lookAt(0, 0.2, 0)
 
     return {
       renderer,
@@ -247,6 +264,7 @@ const HiggsFieldModule: PhysicsModule<HiggsState> = {
       posAttr,
       colAttr,
       ball,
+      vevRing,
       ballR:    initR,
       ballPhi:  initPhi,
       ballVR:   0,
@@ -272,6 +290,10 @@ const HiggsFieldModule: PhysicsModule<HiggsState> = {
       updateSurface(state.posAttr, state.colAttr, state.surfaceMesh.geometry, temp)
       ballVR += (Math.random() - 0.5) * 0.5
       lastTemp = temp
+      // VEV ring tracks the trough height
+      state.vevRing.position.y = clamp(vEff(V_VEV, temp), Y_MIN, Y_MAX)
+      // Show VEV ring only in broken phase (T < 1); hide it in symmetric phase
+      state.vevRing.visible = temp < 1.05
     }
 
     // ── Ball physics: 1-D radial motion on the potential surface ───────────
@@ -288,23 +310,29 @@ const HiggsFieldModule: PhysicsModule<HiggsState> = {
     ballPhi += dt * (0.5 + ballR * 0.3)
 
     // Place ball on the surface
-    const by = ballY(ballR, temp) + 0.12
+    const by = ballY(ballR, temp) + 0.18
     state.ball.position.set(
       ballR * Math.cos(ballPhi),
       by,
       ballR * Math.sin(ballPhi),
     )
 
+    // Ball colour: gold in broken phase (r > VEV*0.3), red in symmetric phase (near origin)
+    const ballMat = state.ball.material as THREE.MeshStandardMaterial
+    const inBroken = temp < 1.0 && ballR > V_VEV * 0.35
+    ballMat.color.set(inBroken ? 0xffd700 : 0xff4433)
+    ballMat.emissive.set(inBroken ? 0xffd700 : 0xff4433)
+
     // ── Camera rotation ─────────────────────────────────────────────────────
     if (rotate) {
       camAngle += dt * 0.3
-      const dist = Math.sqrt(0 * 0 + 5 * 5 + 7 * 7)  // preserve radius
+      const dist = Math.sqrt(0 * 0 + 4.5 * 4.5 + 8.5 * 8.5)
       state.camera.position.set(
         Math.sin(camAngle) * dist,
-        5,
+        4.5,
         Math.cos(camAngle) * dist,
       )
-      state.camera.lookAt(0, 0.5, 0)
+      state.camera.lookAt(0, 0.2, 0)
     }
 
     return { ...state, ballR, ballPhi, ballVR, lastTemp, camAngle }
