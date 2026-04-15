@@ -1,128 +1,155 @@
-// Hydrogen Orbital — Canvas 2D probability density cross-section
-// Visualises |ψ(r,θ)|² in the xz plane (y=0) for 1s, 2s, 2p, 3s, 3p, 3d.
-// All distances in atomic units (Bohr radii, a₀).
-// Supports mouse interaction: pan, zoom, hover probe.
+// Hydrogen Orbital — Three.js 3D probability-cloud particle system
+// Samples N points from |ψ_{nlm}(r,θ,φ)|² using rejection sampling in 3D.
+// Renders as a dense THREE.Points cloud; mouse drag orbits the camera.
 
 import type { PhysicsModule, ControlDefinition, Params } from '@/types/physics'
+import * as THREE from 'three'
 
-// ── State ────────────────────────────────────────────────────────────────────
+// ── Radial + angular wave functions ──────────────────────────────────────────
+// Returns (un-normalised) |ψ|² at spherical coordinates (r, cosTheta)
+// Uses atomic units (Bohr radii a₀ = 1).
 
-type HydrogenState = {
-  ctx:           CanvasRenderingContext2D
-  offCanvas:     HTMLCanvasElement | null   // cached colour map
-  cachedOrbital: string
-  cachedScale:   number
-  maxVal:        number                     // peak |ψ|² for normalising the probe
-}
-
-// ── Wave functions ────────────────────────────────────────────────────────────
-// Returns |ψ(x,z)|² (un-normalised, correctly shaped) for the xz cross-section.
-
-function psi2(orbital: string, x: number, z: number): number {
-  const r    = Math.sqrt(x * x + z * z)
-  const cosT = r > 1e-12 ? z / r : 0
-
+function psi2_3d(orbital: string, r: number, cosT: number, sinT: number, phi: number): number {
   switch (orbital) {
     case '1s':
       return Math.exp(-2 * r)
+
     case '2s': {
       const u = (2 - r) * Math.exp(-r / 2)
       return u * u
     }
-    case '2p': {
+
+    case '2p_z': {   // m=0, Y10 ∝ cosθ
       const u = r * cosT * Math.exp(-r / 2)
       return u * u
     }
-    case '3s': {
-      const u = (27 - 18 * r + 2 * r * r) * Math.exp(-r / 3)
+
+    case '2p_x': {   // m=±1, Y11 ∝ sinθ cosφ
+      const u = r * sinT * Math.cos(phi) * Math.exp(-r / 2)
       return u * u
     }
-    case '3p': {
+
+    case '3s': {
+      const u = (27 - 18*r + 2*r*r) * Math.exp(-r / 3)
+      return u * u
+    }
+
+    case '3p_z': {   // m=0
       const u = (6 - r) * r * cosT * Math.exp(-r / 3)
       return u * u
     }
-    case '3d': {
-      const u = r * r * (3 * cosT * cosT - 1) * Math.exp(-r / 3)
+
+    case '3d_z2': {  // m=0, Y20 ∝ 3cos²θ−1
+      const u = r * r * (3*cosT*cosT - 1) * Math.exp(-r / 3)
       return u * u
     }
+
+    case '3d_xz': {  // m=±1, Y21 ∝ sinθ cosθ cosφ
+      const u = r * r * sinT * cosT * Math.cos(phi) * Math.exp(-r / 3)
+      return u * u
+    }
+
     default:
       return 0
   }
 }
 
-// ── Orbital metadata ──────────────────────────────────────────────────────────
-
-const ORBITAL_INFO: Record<string, { label: string; qn: string }> = {
-  '1s': { label: '1s',    qn: 'n=1  l=0  m=0' },
-  '2s': { label: '2s',    qn: 'n=2  l=0  m=0' },
-  '2p': { label: '2p_z',  qn: 'n=2  l=1  m=0' },
-  '3s': { label: '3s',    qn: 'n=3  l=0  m=0' },
-  '3p': { label: '3p_z',  qn: 'n=3  l=1  m=0' },
-  '3d': { label: '3d_z²', qn: 'n=3  l=2  m=0' },
+// Radial extent used for the rejection-sampling bounding box
+const RMAX: Record<string, number> = {
+  '1s': 8, '2s': 22, '2p_z': 20, '2p_x': 20,
+  '3s': 40, '3p_z': 38, '3d_z2': 36, '3d_xz': 36,
 }
 
-// ── Rendering ────────────────────────────────────────────────────────────────
+// ── Sampling ──────────────────────────────────────────────────────────────────
 
-/** Build a 400×400 offscreen canvas with the |ψ|² colour map. */
-function buildOrbitalCanvas(
-  orbital: string,
-  scale: number,
-): { canvas: HTMLCanvasElement; maxVal: number } {
-  const SIZE = 400
-  const off  = document.createElement('canvas')
-  off.width  = SIZE
-  off.height = SIZE
-  const offCtx = off.getContext('2d')!
-  const imgData = offCtx.createImageData(SIZE, SIZE)
-  const data    = imgData.data
-  const half    = SIZE / 2
+const N_PARTICLES = 28000
 
-  // First pass: find the peak value via sparse sampling
-  let maxVal = 0
-  for (let py = 0; py < SIZE; py += 4) {
-    for (let px = 0; px < SIZE; px += 4) {
-      const v = psi2(orbital, (px - half) / half * scale, -(py - half) / half * scale)
-      if (v > maxVal) maxVal = v
+function sampleCloud(orbital: string): Float32Array {
+  const rmax = RMAX[orbital] ?? 20
+  const pts  = new Float32Array(N_PARTICLES * 3)
+  let accepted = 0
+
+  // Find peak via sparse grid
+  let peak = 0
+  const steps = 40
+  for (let ir = 0; ir < steps; ir++) {
+    for (let it = 0; it < steps; it++) {
+      const r = (ir + 0.5) / steps * rmax
+      const cosT = -1 + (it + 0.5) / steps * 2
+      const sinT = Math.sqrt(Math.max(0, 1 - cosT*cosT))
+      const v = psi2_3d(orbital, r, cosT, sinT, 0) * r * r  // include Jacobian r²
+      if (v > peak) peak = v
     }
   }
-  if (maxVal === 0) maxVal = 1
+  if (peak === 0) peak = 1
 
-  // Second pass: fill every pixel
-  for (let py = 0; py < SIZE; py++) {
-    for (let px = 0; px < SIZE; px++) {
-      const x =  (px - half) / half * scale
-      const z = -(py - half) / half * scale
+  while (accepted < N_PARTICLES) {
+    // Uniformly sample in a cube [-rmax, rmax]³
+    const x = (Math.random() * 2 - 1) * rmax
+    const y = (Math.random() * 2 - 1) * rmax
+    const z = (Math.random() * 2 - 1) * rmax
+    const r = Math.sqrt(x*x + y*y + z*z)
+    if (r < 1e-9 || r > rmax) continue
 
-      let val = psi2(orbital, x, z) / maxVal
-      // Logarithmic rescaling brings out both the dense core and faint cloud
-      val = Math.log1p(val * 80) / Math.log1p(80)
-      val = Math.min(1, val)
+    const cosT = z / r
+    const sinT = Math.sqrt(Math.max(0, 1 - cosT*cosT))
+    const phi  = Math.atan2(y, x)
 
-      const i = (py * SIZE + px) * 4
-      // Colormap: black → deep indigo → cyan → bright white
-      if (val < 0.35) {
-        const t = val / 0.35
-        data[i]     = Math.round(20  * t)
-        data[i + 1] = Math.round(10  * t)
-        data[i + 2] = Math.round(160 * t)
-      } else if (val < 0.65) {
-        const t = (val - 0.35) / 0.30
-        data[i]     = Math.round(20  + 30  * t)
-        data[i + 1] = Math.round(10  + 190 * t)
-        data[i + 2] = Math.round(160 + 95  * t)
-      } else {
-        const t = (val - 0.65) / 0.35
-        data[i]     = Math.round(50  + 205 * t)
-        data[i + 1] = Math.round(200 + 55  * t)
-        data[i + 2] = 255
-      }
-      data[i + 3] = 255
+    // Probability ∝ |ψ|² × r² (volume element in 3D)
+    const p    = psi2_3d(orbital, r, cosT, sinT, phi) * r * r / peak
+    if (Math.random() < p) {
+      pts[accepted * 3]     = x
+      pts[accepted * 3 + 1] = y
+      pts[accepted * 3 + 2] = z
+      accepted++
     }
   }
-
-  offCtx.putImageData(imgData, 0, 0)
-  return { canvas: off, maxVal }
+  return pts
 }
+
+// ── Colour by radius ──────────────────────────────────────────────────────────
+
+function buildColors(positions: Float32Array, rmax: number): Float32Array {
+  const cols = new Float32Array(N_PARTICLES * 3)
+  // deep blue (close) → copper (mid) → white (far)
+  const cInner = new THREE.Color(0x2244aa)
+  const cMid   = new THREE.Color(0xc8955a)
+  const cOuter = new THREE.Color(0xffffff)
+
+  for (let i = 0; i < N_PARTICLES; i++) {
+    const x = positions[i*3], y = positions[i*3+1], z = positions[i*3+2]
+    const r = Math.sqrt(x*x + y*y + z*z)
+    const t = Math.min(1, r / (rmax * 0.55))
+
+    let c: THREE.Color
+    if (t < 0.5) {
+      c = cInner.clone().lerp(cMid, t * 2)
+    } else {
+      c = cMid.clone().lerp(cOuter, (t - 0.5) * 2)
+    }
+    cols[i*3] = c.r; cols[i*3+1] = c.g; cols[i*3+2] = c.b
+  }
+  return cols
+}
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+type HydrogenState = {
+  renderer:        THREE.WebGLRenderer
+  scene:           THREE.Scene
+  camera:          THREE.PerspectiveCamera
+  points:          THREE.Points
+  posAttr:         THREE.BufferAttribute
+  colAttr:         THREE.BufferAttribute
+  nucleus:         THREE.Mesh
+  currentOrbital:  string
+  azimuth:         number
+  elevation:       number
+  prevMouseX:      number
+  prevMouseY:      number
+}
+
+const rendererStore = new WeakMap<HTMLElement, THREE.WebGLRenderer>()
 
 // ── Module ────────────────────────────────────────────────────────────────────
 
@@ -130,160 +157,140 @@ const HydrogenOrbitalModule: PhysicsModule<HydrogenState> = {
   id: 'hydrogen-orbital',
 
   metadata: {
-    title:       '氢原子轨道',
-    titleEn:     'Hydrogen Orbitals',
-    description:   '量子力学概率云——氢原子电子波函数 xz 截面 (1s / 2p / 3d)',
-    descriptionEn: 'Quantum probability clouds — the xz cross-section of hydrogen electron wavefunctions (1s / 2p / 3d).',
-    theory:      ['quantum-mechanics'],
-    mathLevel:   3,
-    renderer:    'canvas2d',
+    title:         '氢原子轨道',
+    titleEn:       'Hydrogen Orbitals',
+    description:   '量子力学概率云——氢原子电子 |ψ|² 三维粒子特效。拖曳鼠标旋转。',
+    descriptionEn: '3D quantum probability cloud of hydrogen wavefunctions — |ψ|² rendered as a dense particle field. Drag to rotate.',
+    theory:        ['quantum-mechanics'],
+    mathLevel:     2,
+    renderer:      'threejs',
   },
 
-  // ── Lifecycle ─────────────────────────────────────────────────────────────
+  // ── Init ──────────────────────────────────────────────────────────────────
 
-  init(canvas, _params): HydrogenState {
-    const ctx = (canvas as HTMLCanvasElement).getContext('2d')!
-    return { ctx, offCanvas: null, cachedOrbital: '', cachedScale: -1, maxVal: 1 }
+  init(canvas, params): HydrogenState {
+    const el = canvas as HTMLCanvasElement
+
+    const renderer = new THREE.WebGLRenderer({ canvas: el, antialias: false })
+    renderer.setSize(el.width, el.height, false)
+    renderer.setClearColor(0x000008)
+    rendererStore.set(canvas, renderer)
+
+    const scene = new THREE.Scene()
+
+    const orbital  = (params.orbital as string) ?? '1s'
+    const positions = sampleCloud(orbital)
+    const rmax     = RMAX[orbital] ?? 20
+    const colors   = buildColors(positions, rmax)
+
+    const geo      = new THREE.BufferGeometry()
+    const posAttr  = new THREE.BufferAttribute(positions, 3)
+    const colAttr  = new THREE.BufferAttribute(colors, 3)
+    posAttr.setUsage(THREE.DynamicDrawUsage)
+    geo.setAttribute('position', posAttr)
+    geo.setAttribute('color', colAttr)
+
+    const mat = new THREE.PointsMaterial({
+      size:          0.28,
+      vertexColors:  true,
+      sizeAttenuation: true,
+      transparent:   true,
+      opacity:       0.65,
+    })
+    const points = new THREE.Points(geo, mat)
+    scene.add(points)
+
+    // Nucleus (proton) — small bright sphere at origin
+    const nMesh = new THREE.Mesh(
+      new THREE.SphereGeometry(0.18, 16, 12),
+      new THREE.MeshStandardMaterial({ color: 0xff6644, emissive: new THREE.Color(0xff6644), emissiveIntensity: 1.2, roughness: 0.2, metalness: 0 }),
+    )
+    scene.add(nMesh)
+    scene.add(new THREE.AmbientLight(0xffffff, 1.0))
+
+    const camera = new THREE.PerspectiveCamera(40, el.width / el.height, 0.1, 500)
+    const d = rmax * 1.4
+    camera.position.set(0, 0, d)
+    camera.lookAt(0, 0, 0)
+
+    return {
+      renderer, scene, camera, points, posAttr, colAttr, nucleus: nMesh,
+      currentOrbital: orbital,
+      azimuth: 0, elevation: 0,
+      prevMouseX: -1, prevMouseY: -1,
+    }
   },
 
-  tick(state, _dt, params): HydrogenState {
-    const orbital = params.orbital as string
-    const scale   = params.scale   as number
+  // ── Tick ──────────────────────────────────────────────────────────────────
 
-    // Only recompute when orbital type or scale changes (~5–30 ms per build)
-    if (state.cachedOrbital === orbital && Math.abs(state.cachedScale - scale) < 0.05) {
-      return state
+  tick(state, dt, params): HydrogenState {
+    const orbital  = params.orbital as string ?? '1s'
+    const mouseX   = params._mouseX  as number ?? -1
+    const mouseY   = params._mouseY  as number ?? -1
+    const dragging = params._dragging as boolean ?? false
+
+    // ── Resample when orbital changes ────────────────────────────────────────
+    if (orbital !== state.currentOrbital) {
+      const positions = sampleCloud(orbital)
+      const rmax      = RMAX[orbital] ?? 20
+      const colors    = buildColors(positions, rmax)
+
+      ;(state.posAttr.array as Float32Array).set(positions)
+      ;(state.colAttr.array as Float32Array).set(colors)
+      state.posAttr.needsUpdate = true
+      state.colAttr.needsUpdate = true
+
+      // Adjust camera distance
+      const d = rmax * 1.4
+      state.camera.position.set(
+        Math.sin(state.azimuth) * Math.cos(state.elevation) * d,
+        Math.sin(state.elevation) * d,
+        Math.cos(state.azimuth) * Math.cos(state.elevation) * d,
+      )
+      state.camera.lookAt(0, 0, 0)
+
+      return { ...state, currentOrbital: orbital }
     }
 
-    const { canvas: offCanvas, maxVal } = buildOrbitalCanvas(orbital, scale)
-    return { ...state, offCanvas, maxVal, cachedOrbital: orbital, cachedScale: scale }
+    // ── Camera orbit ─────────────────────────────────────────────────────────
+    let { azimuth, elevation, prevMouseX, prevMouseY } = state
+    if (dragging && prevMouseX >= 0 && mouseX >= 0) {
+      const el = state.renderer.domElement
+      azimuth   -= (mouseX - prevMouseX) / el.width  * Math.PI * 3
+      elevation  = Math.max(-Math.PI/2 + 0.05, Math.min(Math.PI/2 - 0.05,
+        elevation + (mouseY - prevMouseY) / el.height * Math.PI))
+    } else if (!dragging) {
+      // Gentle auto-rotation when idle
+      azimuth += dt * 0.18
+    }
+    prevMouseX = mouseX; prevMouseY = mouseY
+
+    const rmax = RMAX[orbital] ?? 20
+    const d    = rmax * 1.4
+    state.camera.position.set(
+      Math.sin(azimuth) * Math.cos(elevation) * d,
+      Math.sin(elevation) * d,
+      Math.cos(azimuth) * Math.cos(elevation) * d,
+    )
+    state.camera.lookAt(0, 0, 0)
+
+    // Slowly rotate the cloud itself for depth perception
+    state.points.rotation.y += dt * 0.04
+
+    return { ...state, azimuth, elevation, prevMouseX, prevMouseY }
   },
 
-  render(state, canvas, params) {
-    const ctx     = state.ctx
-    const el      = canvas as HTMLCanvasElement
-    const w       = el.width
-    const h       = el.height
-    const orbital = params.orbital as string
-    const scale   = params.scale   as number
+  // ── Render ────────────────────────────────────────────────────────────────
 
-    // View state injected by ModuleViewer via viewRef
-    const panX = typeof params._panX === 'number' ? params._panX : 0
-    const panY = typeof params._panY === 'number' ? params._panY : 0
-    const zoom = typeof params._zoom === 'number' ? params._zoom : 1
-    const mx   = typeof params._mouseX === 'number' ? params._mouseX : -1
-    const my   = typeof params._mouseY === 'number' ? params._mouseY : -1
-
-    ctx.fillStyle = '#00000a'
-    ctx.fillRect(0, 0, w, h)
-
-    if (!state.offCanvas) return
-
-    // ── Draw orbital image with pan / zoom ───────────────────────────────────
-    const baseSize   = Math.min(w, h) * 0.88
-    const scaledSize = baseSize * zoom
-    const ox = (w - scaledSize) / 2 + panX
-    const oy = (h - scaledSize) / 2 + panY
-
-    ctx.drawImage(state.offCanvas, ox, oy, scaledSize, scaledSize)
-
-    // Subtle border around the image
-    ctx.strokeStyle = 'rgba(100,120,180,0.15)'
-    ctx.lineWidth   = 1
-    ctx.strokeRect(ox, oy, scaledSize, scaledSize)
-
-    // ── Scale bar — fixed to viewport bottom-left ────────────────────────────
-    const pxPerBohr  = scaledSize / (2 * scale)
-    const barBohrs   = Math.max(1, Math.round(scale / zoom / 3))
-    const barPx      = barBohrs * pxPerBohr
-    const barX       = 20
-    const barY       = h - 24
-    const barFontSz  = Math.max(9, Math.round(w * 0.013))
-
-    ctx.strokeStyle = 'rgba(255,255,255,0.40)'
-    ctx.lineWidth   = 1.5
-    ctx.beginPath()
-    ctx.moveTo(barX,          barY); ctx.lineTo(barX + barPx, barY)
-    ctx.moveTo(barX,          barY - 4); ctx.lineTo(barX,          barY + 4)
-    ctx.moveTo(barX + barPx,  barY - 4); ctx.lineTo(barX + barPx,  barY + 4)
-    ctx.stroke()
-    ctx.font      = `${barFontSz}px monospace`
-    ctx.fillStyle = 'rgba(255,255,255,0.40)'
-    ctx.fillText(`${barBohrs} a₀`, barX + barPx + 6, barY + 4)
-
-    // ── Orbital label — fixed to viewport top-left ───────────────────────────
-    const info = ORBITAL_INFO[orbital]
-    if (info) {
-      const labelSz = Math.max(15, Math.round(w * 0.022))
-      ctx.font      = `bold ${labelSz}px monospace`
-      ctx.fillStyle = 'rgba(160,210,255,0.92)'
-      ctx.fillText(info.label, 20, 20 + labelSz)
-      ctx.font      = `${Math.max(10, Math.round(w * 0.013))}px monospace`
-      ctx.fillStyle = 'rgba(255,255,255,0.38)'
-      ctx.fillText(info.qn, 20, 20 + labelSz + Math.round(w * 0.018) + 6)
+  render(state, canvas, _params) {
+    const el = canvas as HTMLCanvasElement
+    const w = el.width, h = el.height
+    if (state.renderer.domElement.width !== w || state.renderer.domElement.height !== h) {
+      state.renderer.setSize(w, h, false)
+      state.camera.aspect = w / h
+      state.camera.updateProjectionMatrix()
     }
-
-    // ── Hover probe ──────────────────────────────────────────────────────────
-    const insideImage = mx >= ox && mx <= ox + scaledSize && my >= oy && my <= oy + scaledSize
-    if (mx >= 0 && my >= 0 && insideImage) {
-      // Convert canvas pixel → physics coordinates (Bohr radii)
-      const fracX =  (mx - ox) / scaledSize
-      const fracY =  (my - oy) / scaledSize
-      const physX =  (fracX - 0.5) * 2 * scale
-      const physZ = -(fracY - 0.5) * 2 * scale
-      const r       = Math.sqrt(physX * physX + physZ * physZ)
-      const theta   = Math.atan2(Math.sqrt(physX * physX), physZ) * 180 / Math.PI
-      const rawPsi2 = psi2(orbital, physX, physZ)
-      const norm    = state.maxVal > 0 ? rawPsi2 / state.maxVal : 0
-
-      // Crosshair
-      ctx.save()
-      ctx.strokeStyle = 'rgba(255,255,255,0.22)'
-      ctx.lineWidth   = 0.5
-      ctx.setLineDash([4, 4])
-      ctx.beginPath()
-      ctx.moveTo(mx, oy);             ctx.lineTo(mx, oy + scaledSize)
-      ctx.moveTo(ox, my);             ctx.lineTo(ox + scaledSize, my)
-      ctx.stroke()
-      ctx.setLineDash([])
-      ctx.restore()
-
-      // Cursor dot
-      ctx.fillStyle = 'rgba(255,255,255,0.80)'
-      ctx.beginPath()
-      ctx.arc(mx, my, 2.5, 0, Math.PI * 2)
-      ctx.fill()
-
-      // Info card
-      const fSz   = Math.max(10, Math.round(w * 0.013))
-      const lines = [
-        `r  = ${r.toFixed(2)} a₀`,
-        `θ  = ${theta.toFixed(1)}°`,
-        `|ψ|² ∝ ${norm.toFixed(3)}`,
-      ]
-      const lineH  = fSz + 5
-      const padX   = 10
-      const padY   = 8
-      const cardW  = 140
-      const cardH  = lines.length * lineH + padY * 2
-      let   cardX  = mx + 16
-      let   cardY  = my - cardH / 2
-      if (cardX + cardW > w - 8) cardX = mx - cardW - 16
-      if (cardY < 8)             cardY = 8
-      if (cardY + cardH > h - 8) cardY = h - cardH - 8
-
-      ctx.fillStyle   = 'rgba(4,4,12,0.88)'
-      ctx.fillRect(cardX, cardY, cardW, cardH)
-      ctx.strokeStyle = 'rgba(100,160,220,0.30)'
-      ctx.lineWidth   = 0.5
-      ctx.strokeRect(cardX, cardY, cardW, cardH)
-
-      ctx.font      = `${fSz}px "JetBrains Mono", monospace`
-      ctx.fillStyle = 'rgba(160,210,255,0.90)'
-      lines.forEach((line, i) => {
-        ctx.fillText(line, cardX + padX, cardY + padY + (i + 1) * lineH - 2)
-      })
-    }
+    state.renderer.render(state.scene, state.camera)
   },
 
   // ── Controls ──────────────────────────────────────────────────────────────
@@ -291,34 +298,29 @@ const HydrogenOrbitalModule: PhysicsModule<HydrogenState> = {
   getControls(): ControlDefinition[] {
     return [
       {
-        type:    'select',
-        id:      'orbital',
-        label:   '轨道',
-        labelEn: 'Orbital',
+        type: 'select', id: 'orbital',
+        label: '轨道', labelEn: 'Orbital',
         options: [
-          { value: '1s', label: '1s  （基态，球对称）', labelEn: '1s  (ground state, spherical)' },
-          { value: '2s', label: '2s  （径向节面）',     labelEn: '2s  (radial node)'             },
-          { value: '2p', label: '2p_z（哑铃形）',       labelEn: '2p_z (dumbbell)'               },
-          { value: '3s', label: '3s  （两个节面）',     labelEn: '3s  (two radial nodes)'        },
-          { value: '3p', label: '3p_z（三叶形）',       labelEn: '3p_z (three lobes)'            },
-          { value: '3d', label: '3d_z²（甜甜圈+环）',   labelEn: '3d_z² (donut + ring)'          },
+          { value: '1s',    label: '1s   基态',       labelEn: '1s   ground state'     },
+          { value: '2s',    label: '2s   球对称',      labelEn: '2s   spherical node'   },
+          { value: '2p_z',  label: '2p_z 哑铃',       labelEn: '2p_z dumbbell'         },
+          { value: '2p_x',  label: '2p_x 哑铃',       labelEn: '2p_x dumbbell'         },
+          { value: '3s',    label: '3s   两个节面',    labelEn: '3s   two nodes'        },
+          { value: '3p_z',  label: '3p_z 三叶',       labelEn: '3p_z three lobes'      },
+          { value: '3d_z2', label: '3d_z² 甜甜圈',    labelEn: '3d_z² donut + ring'    },
+          { value: '3d_xz', label: '3d_xz 四叶',      labelEn: '3d_xz four lobes'      },
         ],
         default: '1s',
-      },
-      {
-        type:    'slider',
-        id:      'scale',
-        label:   '视野（Bohr 半径）',
-        labelEn: 'Field of View (Bohr radii)',
-        min:     4,
-        max:     50,
-        step:    1,
-        default: 8,
       },
     ]
   },
 
-  destroy() {},
+  // ── Destroy ───────────────────────────────────────────────────────────────
+
+  destroy(canvas) {
+    const r = rendererStore.get(canvas)
+    if (r) { r.dispose(); rendererStore.delete(canvas) }
+  },
 }
 
 export default HydrogenOrbitalModule

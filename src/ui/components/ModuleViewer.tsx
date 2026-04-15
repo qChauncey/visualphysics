@@ -2,13 +2,13 @@
 // ─────────────────────────────────────────────
 //  <ModuleViewer>
 //  Full-screen canvas for any PhysicsModule.
-//  The canvas fills its parent (absolute inset-0).
-//  Controls appear as a collapsible panel at the bottom.
+//  Controls: hover bottom of canvas → auto-show panel.
+//            click toggle strip → lock open/closed.
 //  Mouse: drag to interact · scroll to zoom · double-click to reset
 //  Touch: single-finger drag · pinch to zoom · double-tap to reset
 // ─────────────────────────────────────────────
 
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useCallback } from 'react'
 import type { PhysicsModule, Params, ControlDefinition } from '@/types/physics'
 import { useModuleRunner } from '@/core/renderer/useModuleRunner'
 import { useLang } from '@/core/i18n'
@@ -26,24 +26,54 @@ function buildDefaultParams(controls: ControlDefinition[]): Params {
 export default function ModuleViewer({ mod }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const controls  = mod.getControls()
-  const [params, setParams]         = useState<Params>(() => buildDefaultParams(controls))
-  const [controlsOpen, setControlsOpen] = useState(false)
+  const [params, setParams]       = useState<Params>(() => buildDefaultParams(controls))
+  const [controlsOpen, setControlsOpen]     = useState(false)
+  const [controlsLocked, setControlsLocked] = useState(false)
   const { lang } = useLang()
 
   // ── View state: pan / zoom / mouse ─────────────────────────────────────────
-  const viewRef    = useRef<Params>({ _panX: 0, _panY: 0, _zoom: 1, _mouseX: -1, _mouseY: -1, _dragging: false })
-  const isDragging = useRef(false)
-  const dragStart  = useRef({ clientX: 0, clientY: 0, panX: 0, panY: 0, dpr: 1 })
+  const viewRef       = useRef<Params>({ _panX: 0, _panY: 0, _zoom: 1, _mouseX: -1, _mouseY: -1, _dragging: false })
+  const isDragging    = useRef(false)
+  const dragStart     = useRef({ clientX: 0, clientY: 0, panX: 0, panY: 0, dpr: 1 })
   const lastPinchDist = useRef<number | null>(null)
+
+  // ── Controls hover logic ────────────────────────────────────────────────────
+  // Refs so event handlers can read current values without stale closures
+  const controlsLockedRef  = useRef(false)
+  const controlsHideTimer  = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Keep ref in sync with state
+  useEffect(() => { controlsLockedRef.current = controlsLocked }, [controlsLocked])
+
+  // Stable function refs — updated every render, safe to call from event handlers
+  const openControlsFnRef  = useRef<() => void>(() => {})
+  const closeControlsFnRef = useRef<() => void>(() => {})
+
+  openControlsFnRef.current = useCallback(() => {
+    if (controlsHideTimer.current) clearTimeout(controlsHideTimer.current)
+    setControlsOpen(true)
+  }, [])
+
+  closeControlsFnRef.current = useCallback(() => {
+    if (controlsLockedRef.current) return
+    if (controlsHideTimer.current) clearTimeout(controlsHideTimer.current)
+    controlsHideTimer.current = setTimeout(() => setControlsOpen(false), 500)
+  }, [])
+
+  // Clean up timer on unmount
+  useEffect(() => () => {
+    if (controlsHideTimer.current) clearTimeout(controlsHideTimer.current)
+  }, [])
 
   const { running, setRunning, reset } = useModuleRunner(mod, canvasRef, params, viewRef)
 
-  // Reset view whenever the module changes
+  // Reset view & controls whenever the module changes
   useEffect(() => {
     viewRef.current    = { _panX: 0, _panY: 0, _zoom: 1, _mouseX: -1, _mouseY: -1, _dragging: false }
     isDragging.current = false
     lastPinchDist.current = null
     setControlsOpen(false)
+    setControlsLocked(false)
   }, [mod])
 
   // ── Canvas mouse / touch events ────────────────────────────────────────────
@@ -56,14 +86,22 @@ export default function ModuleViewer({ mod }: Props) {
     const toCanvas = (clientX: number, clientY: number) => {
       const rect = canvas.getBoundingClientRect()
       const dpr  = canvas.width / rect.width
-      return { x: (clientX - rect.left) * dpr, y: (clientY - rect.top) * dpr, dpr }
+      return { x: (clientX - rect.left) * dpr, y: (clientY - rect.top) * dpr, dpr, relY: (clientY - rect.top) / rect.height }
     }
 
     // ── Mouse ──────────────────────────────────────────────────────────────
     const onMouseMove = (e: MouseEvent) => {
-      const { x, y } = toCanvas(e.clientX, e.clientY)
+      const { x, y, relY } = toCanvas(e.clientX, e.clientY)
       viewRef.current._mouseX = x
       viewRef.current._mouseY = y
+
+      // Show controls when near bottom 20% of canvas
+      if (relY > 0.80) {
+        openControlsFnRef.current()
+      } else {
+        closeControlsFnRef.current()
+      }
+
       if (isDragging.current) {
         const { dpr, clientX, clientY, panX, panY } = dragStart.current
         viewRef.current._panX = panX + (e.clientX - clientX) * dpr
@@ -97,6 +135,7 @@ export default function ModuleViewer({ mod }: Props) {
       viewRef.current._mouseX   = -1
       viewRef.current._mouseY   = -1
       canvas.style.cursor       = 'crosshair'
+      closeControlsFnRef.current()
     }
 
     const onDblClick = () => {
@@ -214,6 +253,17 @@ export default function ModuleViewer({ mod }: Props) {
   const ctrlLabel = (ctrl: ControlDefinition) =>
     lang === 'en' && ctrl.labelEn ? ctrl.labelEn : ctrl.label
 
+  const handleControlsClick = () => {
+    if (controlsLocked) {
+      // Unlock — will close on next mouse-leave
+      setControlsLocked(false)
+    } else {
+      // Lock open
+      setControlsLocked(true)
+      setControlsOpen(true)
+    }
+  }
+
   return (
     <div className="absolute inset-0 bg-[#040404]">
 
@@ -228,22 +278,28 @@ export default function ModuleViewer({ mod }: Props) {
         {running ? '⏸ Pause' : '▶ Resume'}
       </button>
 
-      {/* ── Controls — collapsible bottom panel ── */}
+      {/* ── Controls — hover-triggered bottom panel ── */}
       {controls.length > 0 && (
-        <div className="absolute bottom-0 left-0 right-0 z-10">
-
-          {/* Toggle strip */}
+        <div
+          className="absolute bottom-0 left-0 right-0 z-10"
+          onMouseEnter={() => openControlsFnRef.current()}
+          onMouseLeave={() => closeControlsFnRef.current()}
+        >
+          {/* Toggle / lock strip */}
           <button
-            onClick={() => setControlsOpen((v) => !v)}
+            onClick={handleControlsClick}
             className="w-full flex items-center justify-center gap-2 py-2.5 bg-[#030610]/75 backdrop-blur-md font-mono text-[9px] tracking-[0.18em] uppercase text-[#f0ede8]/28 hover:text-[#f0ede8]/55 transition-colors duration-300"
           >
-            <span>{controlsOpen ? '▼' : '▲'}</span>
+            <span>{controlsLocked ? '◈' : controlsOpen ? '▼' : '▲'}</span>
             <span>{lang === 'en' ? 'Controls' : '控制'}</span>
-            {!controlsOpen && (
+            {controlsLocked && (
+              <span className="ml-1 text-[#c8955a]/50 text-[8px]">
+                {lang === 'en' ? 'locked' : '已锁定'}
+              </span>
+            )}
+            {!controlsOpen && !controlsLocked && (
               <span className="ml-3 text-[#f0ede8]/13 text-[8px] hidden sm:inline tracking-[0.1em]">
-                {lang === 'en'
-                  ? 'scroll · drag · dbl-click to reset'
-                  : '滚轮缩放 · 拖拽 · 双击重置'}
+                {lang === 'en' ? 'hover · click to lock' : '移入展开 · 点击锁定'}
               </span>
             )}
           </button>
