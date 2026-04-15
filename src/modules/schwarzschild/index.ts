@@ -1,354 +1,665 @@
-// Schwarzschild Black Hole — Photon geodesics in Schwarzschild spacetime
-// Spacetime geometry of a Schwarzschild black hole. Photon deflection, the
-// photon sphere, event horizon, and ISCO shown through ray tracing.
+// Schwarzschild Black Hole — Four GR black hole solutions in 3D
+// Schwarzschild, Kerr, Reissner-Nordström, and Kerr-Newman spacetimes.
+// Accretion disk particles, photon sphere, ergosphere, and relativistic jets.
 //
-// Physics (G=c=1, mass M=1  →  Rs = 2, r_photon = 3, r_ISCO = 6):
-//   Orbit equation in terms of u = 1/r:
-//     d²u/dφ² = -u + 3u²
-//   Critical impact parameter: b_crit = 3√3 ≈ 5.196
+// Natural units: G = c = 1, mass M = 1
 
 import type { PhysicsModule, ControlDefinition, Params } from '@/types/physics'
+import * as THREE from 'three'
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// ── Constants ─────────────────────────────────────────────────────────────────
 
-type Vec2 = { x: number; y: number }
+const N_DISK = 8000
+const N_JET  = 2000
+const N_STARS = 2000
 
-type Ray = {
-  pts:      Vec2[]
-  captured: boolean
-  b:        number   // impact parameter
+// ── Black hole parameter tables ───────────────────────────────────────────────
+
+type BHParams = {
+  ehR:       number   // event horizon radius
+  phR:       number   // photon sphere radius
+  iscoR:     number   // ISCO radius
+  innerHR?:  number   // inner horizon radius (RN only)
+  ergoEq?:   number   // ergosphere equatorial radius
+  ergoPol?:  number   // ergosphere polar radius
+  hasJets:   boolean
+  ehColor:   number   // event horizon tint
+  haloColor: number
+  charged:   boolean
 }
 
-type SchwarzschildState = {
-  rays:     Ray[]
-  angle:    number   // slow auto-rotation (radians)
-  /** track param changes to know when to recompute */
-  _lastNumRays: number
+const BH_TABLE: Record<string, BHParams> = {
+  schwarzschild: {
+    ehR:      2,
+    phR:      3,
+    iscoR:    6,
+    hasJets:  false,
+    ehColor:  0x000000,
+    haloColor:0xff6600,
+    charged:  false,
+  },
+  kerr: {
+    // a = 0.9, M = 1  →  r+ = 1 + sqrt(1 - 0.81) = 1 + sqrt(0.19)
+    ehR:      1 + Math.sqrt(0.19),           // ≈ 1.436
+    phR:      2 * (1 + Math.cos((2 / 3) * Math.acos(-0.9))),  // prograde ≈ 1.51
+    iscoR:    2.32,
+    ergoEq:   2,                             // equatorial ergosphere = 2M on equator
+    ergoPol:  1 + Math.sqrt(0.19),           // same as r+ at poles ≈ 1.436
+    hasJets:  true,
+    ehColor:  0x000000,
+    haloColor:0xff6600,
+    charged:  false,
+  },
+  reissner: {
+    // Q = 0.8, M = 1  →  r+ = 1 + sqrt(1 - 0.64) = 1.6
+    ehR:      1 + Math.sqrt(0.36),           // = 1.6
+    phR:      (3 + Math.sqrt(9 - 5.12)) / 2, // ≈ (3 + 1.97) / 2 ≈ 2.485
+    iscoR:    4.6,
+    innerHR:  1 - Math.sqrt(0.36),           // = 0.4
+    hasJets:  false,
+    ehColor:  0x001133,                      // slight blue tint
+    haloColor:0x3366ff,
+    charged:  true,
+  },
+  'kerr-newman': {
+    // a = 0.7, Q = 0.5, M = 1  →  r+ = 1 + sqrt(1 - 0.49 - 0.25) = 1 + sqrt(0.26)
+    ehR:      1 + Math.sqrt(0.26),           // ≈ 1.510
+    phR:      2.2,
+    iscoR:    3.5,
+    ergoEq:   1 + Math.sqrt(1 - 0.25),      // ≈ 1 + sqrt(0.75) ≈ 1.866
+    ergoPol:  1 + Math.sqrt(0.26),           // same as r+ ≈ 1.510
+    hasJets:  true,
+    ehColor:  0x110800,                      // slight golden tint
+    haloColor:0xcc8833,
+    charged:  true,
+  },
 }
 
-// ── Ray tracing ───────────────────────────────────────────────────────────────
+// ── State ─────────────────────────────────────────────────────────────────────
 
-const R_START = 40   // integrate from r = 40M
-const D_PHI   = 0.01 // angular step (radians)
-const MAX_STEPS = 5000
+type BHState = {
+  renderer:   THREE.WebGLRenderer
+  scene:      THREE.Scene
+  camera:     THREE.PerspectiveCamera
+  bhGroup:    THREE.Group
+  diskPts:    THREE.Points
+  diskPos:    Float32Array
+  diskAngle:  Float32Array
+  diskOmega:  Float32Array
+  diskR:      Float32Array          // stored radius per particle
+  jetPts1?:   THREE.Points
+  jetPts2?:   THREE.Points
+  jetPos1?:   Float32Array
+  jetPos2?:   Float32Array
+  jetT1?:     Float32Array
+  jetT2?:     Float32Array
+  t:          number
+  azimuth:    number
+  elevation:  number
+  prevMouseX: number
+  prevMouseY: number
+  lastBHType: string
+}
 
-/**
- * Trace a single photon with impact parameter b.
- * Uses the Schwarzschild orbit equation:  u'' = -u + 3u²  (M=1)
- * Integrate from r_start inward.
- */
-function traceRay(b: number): Ray {
-  const pts: Vec2[] = []
+const rendererStore = new WeakMap<HTMLElement, THREE.WebGLRenderer>()
 
-  // Initial conditions: start at r=R_START heading inward
-  // u = 1/r,  u' = du/dφ
-  // For a ray coming from large r with impact parameter b:
-  //   at φ=0, x = -R_START, y = b  (i.e. r = R_START, φ_polar = π - atan2(b, R_START))
-  // We'll integrate φ from 0 to ~2π and track (r,φ) → (x,y)
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-  // Initial u and u' from geometry at r = R_START
-  // The initial angle: ray comes from -x direction at height y=b
-  // φ_0 = π - arcsin(b/R_START) (approximately π for large R_START)
-  const phi0 = Math.PI - Math.asin(Math.min(1, b / R_START))
-  const u0   = 1 / R_START
+function clamp(v: number, lo: number, hi: number): number {
+  return v < lo ? lo : v > hi ? hi : v
+}
 
-  // du/dφ: negative (r is decreasing) = coming inward
-  // From conservation: (du/dφ)² = 1/b² - u²(1 - 2u)
-  const discrim = 1 / (b * b) - u0 * u0 * (1 - 2 * u0)
-  const du0  = discrim > 0 ? -Math.sqrt(discrim) : 0   // negative = inward
+function makeBackgroundStars(scene: THREE.Scene): void {
+  const pos = new Float32Array(N_STARS * 3)
+  for (let i = 0; i < N_STARS; i++) {
+    const theta = Math.acos(2 * Math.random() - 1)
+    const phi   = Math.random() * Math.PI * 2
+    const r     = 200
+    pos[i * 3]     = r * Math.sin(theta) * Math.cos(phi)
+    pos[i * 3 + 1] = r * Math.sin(theta) * Math.sin(phi)
+    pos[i * 3 + 2] = r * Math.cos(theta)
+  }
+  const geo = new THREE.BufferGeometry()
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3))
+  const mat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.5, sizeAttenuation: true, transparent: true, opacity: 0.7 })
+  scene.add(new THREE.Points(geo, mat))
+}
 
-  let u_prev = u0 - du0 * D_PHI  // backward Euler seed
-  let u_cur  = u0
-  let phi    = phi0
+function buildBHGroup(bhType: string): THREE.Group {
+  const bh    = BH_TABLE[bhType] ?? BH_TABLE['schwarzschild']
+  const group = new THREE.Group()
 
-  let captured = false
+  // ── Event horizon sphere ────────────────────────────────────────────────────
+  const ehGeo = new THREE.SphereGeometry(bh.ehR, 48, 32)
+  const ehMat = new THREE.MeshStandardMaterial({
+    color:     bh.ehColor,
+    roughness: 1,
+    metalness: 0,
+  })
+  group.add(new THREE.Mesh(ehGeo, ehMat))
 
-  for (let step = 0; step < MAX_STEPS; step++) {
-    // Record point
-    const r = 1 / Math.max(u_cur, 1e-9)
-    const x = r * Math.cos(phi)
-    const y = r * Math.sin(phi)
-    pts.push({ x, y })
+  // ── Event horizon outer halo ────────────────────────────────────────────────
+  const haloGeo = new THREE.SphereGeometry(bh.ehR * 1.15, 32, 16)
+  const haloMat = new THREE.MeshBasicMaterial({
+    color:       bh.haloColor,
+    transparent: true,
+    opacity:     0.12,
+    side:        THREE.BackSide,
+    depthWrite:  false,
+  })
+  group.add(new THREE.Mesh(haloGeo, haloMat))
 
-    // Check termination
-    if (u_cur > 0.48) {
-      // Crossed event horizon (r < ~2.08, well inside Rs=2)
-      captured = true
-      break
-    }
-    if (r > R_START * 1.5) {
-      // Escaped to large r
-      break
-    }
+  // ── Photon sphere (transparent glow + equatorial ring) ──────────────────────
+  const phGeo = new THREE.SphereGeometry(bh.phR, 48, 32)
+  const phMat = new THREE.MeshBasicMaterial({
+    color:       0xffffaa,
+    transparent: true,
+    opacity:     0.06,
+    side:        THREE.FrontSide,
+    depthWrite:  false,
+  })
+  const phMesh = new THREE.Mesh(phGeo, phMat)
+  phMesh.userData.isPhotonSphere = true
+  group.add(phMesh)
 
-    // Leapfrog step: u_{n+1} = 2*u_n - u_{n-1} + dφ² * (-u_n + 3*u_n²)
-    const accel   = -u_cur + 3 * u_cur * u_cur
-    const u_next  = 2 * u_cur - u_prev + D_PHI * D_PHI * accel
+  const ringGeo = new THREE.TorusGeometry(bh.phR, 0.04, 16, 64)
+  const ringMat = new THREE.MeshBasicMaterial({
+    color:       0xffffaa,
+    transparent: true,
+    opacity:     0.7,
+    depthWrite:  false,
+  })
+  const ringMesh = new THREE.Mesh(ringGeo, ringMat)
+  ringMesh.userData.isPhotonSphere = true
+  group.add(ringMesh)
 
-    u_prev = u_cur
-    u_cur  = u_next
-    phi   += D_PHI
+  // ── ISCO ring ───────────────────────────────────────────────────────────────
+  const iscoGeo = new THREE.TorusGeometry(bh.iscoR, 0.03, 8, 64)
+  const iscoMat = new THREE.MeshBasicMaterial({
+    color:       0xc8955a,
+    transparent: true,
+    opacity:     0.35,
+    depthWrite:  false,
+  })
+  const iscoMesh = new THREE.Mesh(iscoGeo, iscoMat)
+  iscoMesh.userData.isISCO = true
+  group.add(iscoMesh)
+
+  // ── Inner horizon (Reissner-Nordström only) ──────────────────────────────────
+  if (bh.innerHR !== undefined) {
+    const ihGeo = new THREE.TorusGeometry(bh.innerHR, 0.05, 8, 64)
+    const ihMat = new THREE.MeshBasicMaterial({
+      color:       0x6699ff,
+      transparent: true,
+      opacity:     0.5,
+      depthWrite:  false,
+    })
+    group.add(new THREE.Mesh(ihGeo, ihMat))
   }
 
-  return { pts, captured, b }
+  // ── Ergosphere (Kerr and Kerr-Newman only) ───────────────────────────────────
+  if (bh.ergoEq !== undefined && bh.ergoPol !== undefined) {
+    const ergoGeo = new THREE.SphereGeometry(bh.ergoEq, 32, 16)
+    const ergoMat = new THREE.MeshBasicMaterial({
+      color:       0x4466ff,
+      transparent: true,
+      opacity:     0.08,
+      side:        THREE.BackSide,
+      depthWrite:  false,
+    })
+    const ergo    = new THREE.Mesh(ergoGeo, ergoMat)
+    ergo.scale.y  = bh.ergoPol / bh.ergoEq
+    group.add(ergo)
+  }
+
+  return group
 }
 
-/**
- * Compute all ray paths for the given number of rays.
- * Impact parameters spaced from b_min=2.5 to b_max=20 (M=1).
- */
-function computeRays(numRays: number): Ray[] {
-  const rays: Ray[] = []
-  const b_min = 2.5
-  const b_max = 20
-  for (let i = 0; i < numRays; i++) {
-    const b = b_min + (b_max - b_min) * (i / (numRays - 1))
-    rays.push(traceRay(b))
+function buildDisk(bhType: string): {
+  diskPts:   THREE.Points
+  diskPos:   Float32Array
+  diskAngle: Float32Array
+  diskOmega: Float32Array
+  diskR:     Float32Array
+} {
+  const bh       = BH_TABLE[bhType] ?? BH_TABLE['schwarzschild']
+  const r_inner  = bh.iscoR
+  const r_outer  = bh.iscoR * 3
+
+  const diskPos   = new Float32Array(N_DISK * 3)
+  const diskAngle = new Float32Array(N_DISK)
+  const diskOmega = new Float32Array(N_DISK)
+  const diskR     = new Float32Array(N_DISK)
+  const diskCol   = new Float32Array(N_DISK * 3)
+
+  const cInner = new THREE.Color(0xfff5cc)
+  const cOuter = new THREE.Color(0xff3300)
+
+  for (let i = 0; i < N_DISK; i++) {
+    const r     = r_inner + Math.random() * (r_outer - r_inner)
+    const angle = Math.random() * Math.PI * 2
+    const h     = (Math.random() - 0.5) * r * 0.06
+
+    diskPos[i * 3]     = Math.cos(angle) * r
+    diskPos[i * 3 + 1] = h
+    diskPos[i * 3 + 2] = Math.sin(angle) * r
+    diskAngle[i]       = angle
+    diskOmega[i]       = 1 / Math.pow(r, 1.5)   // Keplerian ω ∝ r^-3/2
+    diskR[i]           = r
+
+    const t          = (r - r_inner) / (r_outer - r_inner)
+    const c          = cInner.clone().lerp(cOuter, t)
+    const brightness = 0.5 + 0.5 * Math.random()
+    diskCol[i * 3]     = c.r * brightness
+    diskCol[i * 3 + 1] = c.g * brightness
+    diskCol[i * 3 + 2] = c.b * brightness
   }
-  return rays
+
+  const diskGeo  = new THREE.BufferGeometry()
+  const posAttr  = new THREE.BufferAttribute(diskPos, 3)
+  posAttr.setUsage(THREE.DynamicDrawUsage)
+  diskGeo.setAttribute('position', posAttr)
+  diskGeo.setAttribute('color', new THREE.BufferAttribute(diskCol, 3))
+
+  const diskMat  = new THREE.PointsMaterial({
+    size:            0.05,
+    vertexColors:    true,
+    sizeAttenuation: true,
+    transparent:     true,
+    opacity:         0.75,
+    depthWrite:      false,
+  })
+  const diskPts  = new THREE.Points(diskGeo, diskMat)
+
+  return { diskPts, diskPos, diskAngle, diskOmega, diskR }
+}
+
+function buildJets(bhType: string): {
+  jetPts1: THREE.Points
+  jetPts2: THREE.Points
+  jetPos1: Float32Array
+  jetPos2: Float32Array
+  jetT1:   Float32Array
+  jetT2:   Float32Array
+} {
+  const bh    = BH_TABLE[bhType] ?? BH_TABLE['schwarzschild']
+  const r_eh  = bh.ehR
+  const JET_H = 12
+
+  function initJetArray(sign: number): { pts: THREE.Points; pos: Float32Array; t: Float32Array } {
+    const pos = new Float32Array(N_JET * 3)
+    const t   = new Float32Array(N_JET)
+    const col = new Float32Array(N_JET * 3)
+
+    for (let i = 0; i < N_JET; i++) {
+      t[i]        = Math.random()
+      const ti    = t[i]
+      const y     = sign * (r_eh + ti * JET_H)
+      const spread = ti * 0.3
+      const phi   = Math.random() * Math.PI * 2
+      pos[i * 3]     = Math.cos(phi) * spread
+      pos[i * 3 + 1] = y
+      pos[i * 3 + 2] = Math.sin(phi) * spread
+
+      // Cyan/white near base, fading blue outward
+      const brightness = 1.0 - ti * 0.7
+      col[i * 3]     = brightness * 0.6
+      col[i * 3 + 1] = brightness * 0.9
+      col[i * 3 + 2] = brightness * 1.0
+    }
+
+    const geo    = new THREE.BufferGeometry()
+    const posAttr = new THREE.BufferAttribute(pos, 3)
+    posAttr.setUsage(THREE.DynamicDrawUsage)
+    geo.setAttribute('position', posAttr)
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3))
+
+    const mat = new THREE.PointsMaterial({
+      size:            0.06,
+      vertexColors:    true,
+      sizeAttenuation: true,
+      transparent:     true,
+      opacity:         0.65,
+      depthWrite:      false,
+    })
+    return { pts: new THREE.Points(geo, mat), pos, t }
+  }
+
+  const up   = initJetArray(+1)
+  const down = initJetArray(-1)
+
+  return {
+    jetPts1: up.pts,
+    jetPts2: down.pts,
+    jetPos1: up.pos,
+    jetPos2: down.pos,
+    jetT1:   up.t,
+    jetT2:   down.t,
+  }
 }
 
 // ── Module ────────────────────────────────────────────────────────────────────
 
-const B_CRIT = 3 * Math.sqrt(3)  // ≈ 5.196 — critical impact parameter
-
-const Schwarzschild: PhysicsModule<SchwarzschildState> = {
+const SchwarzschildModule: PhysicsModule<BHState> = {
   id: 'schwarzschild',
 
   metadata: {
-    title:        '史瓦西黑洞',
-    titleEn:      'Schwarzschild Black Hole',
-    description:  '广义相对论预言的黑洞时空结构。光子在强引力场中偏折，光子球、事件视界与ISCO清晰可见。',
-    descriptionEn: 'Spacetime geometry of a Schwarzschild black hole. Photon deflection, the photon sphere, event horizon, and ISCO shown through ray tracing.',
+    title:        '黑洞时空',
+    titleEn:      'Black Hole Spacetime',
+    description:  '四种广义相对论黑洞：史瓦西、克尔、莱斯纳-诺德斯特伦与克尔-纽曼。吸积盘、光子球与相对论喷流实时模拟。',
+    descriptionEn:'Four black hole solutions of general relativity: Schwarzschild, Kerr, Reissner-Nordström, and Kerr-Newman. Accretion disk, photon sphere, and relativistic jets rendered in real time.',
     theory:       ['general-relativity'],
     mathLevel:    2,
-    renderer:     'canvas2d',
+    renderer:     'threejs',
   },
 
-  // ── Lifecycle ─────────────────────────────────────────────────────────────────
+  // ── Init ────────────────────────────────────────────────────────────────────
 
-  init(_canvas, params): SchwarzschildState {
-    const numRays = params.numRays as number
-    const rays    = computeRays(numRays)
+  init(canvas, params): BHState {
+    const el     = canvas as HTMLCanvasElement
+    const bhType = (params.bhType as string) ?? 'schwarzschild'
+
+    // ── Renderer ──────────────────────────────────────────────────────────────
+    const renderer = new THREE.WebGLRenderer({ canvas: el, antialias: true })
+    renderer.setSize(el.width, el.height, false)
+    renderer.setClearColor(0x040408)
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    rendererStore.set(canvas, renderer)
+
+    // ── Scene ─────────────────────────────────────────────────────────────────
+    const scene = new THREE.Scene()
+
+    // Background stars
+    makeBackgroundStars(scene)
+
+    // Lighting
+    scene.add(new THREE.AmbientLight(0x080818, 1.0))
+    const diskLight = new THREE.PointLight(0xff8833, 2.0, 30)
+    diskLight.position.set(0, 0, 0)
+    scene.add(diskLight)
+    const rimLight = new THREE.DirectionalLight(0x4466aa, 0.8)
+    rimLight.position.set(-5, 8, -5)
+    scene.add(rimLight)
+
+    // ── BH geometry group ─────────────────────────────────────────────────────
+    const bhGroup = buildBHGroup(bhType)
+    scene.add(bhGroup)
+
+    // ── Accretion disk ────────────────────────────────────────────────────────
+    const { diskPts, diskPos, diskAngle, diskOmega, diskR } = buildDisk(bhType)
+    scene.add(diskPts)
+
+    // ── Jets (Kerr / Kerr-Newman) ─────────────────────────────────────────────
+    let jetPts1: THREE.Points | undefined
+    let jetPts2: THREE.Points | undefined
+    let jetPos1: Float32Array | undefined
+    let jetPos2: Float32Array | undefined
+    let jetT1:   Float32Array | undefined
+    let jetT2:   Float32Array | undefined
+
+    const bh = BH_TABLE[bhType] ?? BH_TABLE['schwarzschild']
+    if (bh.hasJets) {
+      const jets = buildJets(bhType)
+      jetPts1 = jets.jetPts1; jetPts2 = jets.jetPts2
+      jetPos1 = jets.jetPos1; jetPos2 = jets.jetPos2
+      jetT1   = jets.jetT1;   jetT2   = jets.jetT2
+      scene.add(jetPts1)
+      scene.add(jetPts2)
+    }
+
+    // ── Camera ────────────────────────────────────────────────────────────────
+    const camera = new THREE.PerspectiveCamera(45, el.width / el.height, 0.05, 500)
+    camera.position.set(0, 6, 16)
+    camera.lookAt(0, 0, 0)
+
     return {
-      rays,
-      angle:        0,
-      _lastNumRays: numRays,
+      renderer, scene, camera,
+      bhGroup,
+      diskPts, diskPos, diskAngle, diskOmega, diskR,
+      jetPts1, jetPts2, jetPos1, jetPos2, jetT1, jetT2,
+      t:          0,
+      azimuth:    0,
+      elevation:  0.37,
+      prevMouseX: -1,
+      prevMouseY: -1,
+      lastBHType: bhType,
     }
   },
 
-  tick(state, dt, params): SchwarzschildState {
-    const numRays = params.numRays as number
-    const rotate  = params.rotate  as boolean
+  // ── Tick ────────────────────────────────────────────────────────────────────
 
-    // Recompute rays when numRays changes
-    if (numRays !== state._lastNumRays) {
-      return {
-        rays:         computeRays(numRays),
-        angle:        state.angle,
-        _lastNumRays: numRays,
+  tick(state, dt, params): BHState {
+    const bhType  = (params.bhType  as string)  ?? 'schwarzschild'
+    const speed   = (params.speed   as number)  ?? 1
+    const showPS  = (params.showPhotonSphere as boolean) ?? true
+    const showISCO = (params.showISCO as boolean) ?? true
+
+    // Clamp dt to avoid large jumps when tab was hidden
+    const safeDt  = Math.min(dt, 0.05)
+
+    // ── BH type switch ─────────────────────────────────────────────────────────
+    if (bhType !== state.lastBHType) {
+      // Remove old BH geometry and jets from scene
+      state.scene.remove(state.bhGroup)
+      state.scene.remove(state.diskPts)
+      if (state.jetPts1) state.scene.remove(state.jetPts1)
+      if (state.jetPts2) state.scene.remove(state.jetPts2)
+
+      // Dispose old geometries
+      state.diskPts.geometry.dispose()
+      ;(state.diskPts.material as THREE.Material).dispose()
+      if (state.jetPts1) {
+        state.jetPts1.geometry.dispose()
+        ;(state.jetPts1.material as THREE.Material).dispose()
       }
+      if (state.jetPts2) {
+        state.jetPts2.geometry.dispose()
+        ;(state.jetPts2.material as THREE.Material).dispose()
+      }
+
+      // Build new geometry
+      const bhGroup = buildBHGroup(bhType)
+      state.scene.add(bhGroup)
+
+      const { diskPts, diskPos, diskAngle, diskOmega, diskR } = buildDisk(bhType)
+      state.scene.add(diskPts)
+
+      const newBH = BH_TABLE[bhType] ?? BH_TABLE['schwarzschild']
+      let jetPts1: THREE.Points | undefined
+      let jetPts2: THREE.Points | undefined
+      let jetPos1: Float32Array | undefined
+      let jetPos2: Float32Array | undefined
+      let jetT1:   Float32Array | undefined
+      let jetT2:   Float32Array | undefined
+
+      if (newBH.hasJets) {
+        const jets = buildJets(bhType)
+        jetPts1 = jets.jetPts1; jetPts2 = jets.jetPts2
+        jetPos1 = jets.jetPos1; jetPos2 = jets.jetPos2
+        jetT1   = jets.jetT1;   jetT2   = jets.jetT2
+        state.scene.add(jetPts1)
+        state.scene.add(jetPts2)
+      }
+
+      state.bhGroup    = bhGroup
+      state.diskPts    = diskPts
+      state.diskPos    = diskPos
+      state.diskAngle  = diskAngle
+      state.diskOmega  = diskOmega
+      state.diskR      = diskR
+      state.jetPts1    = jetPts1
+      state.jetPts2    = jetPts2
+      state.jetPos1    = jetPos1
+      state.jetPos2    = jetPos2
+      state.jetT1      = jetT1
+      state.jetT2      = jetT2
+      state.lastBHType = bhType
     }
 
-    const angle = rotate
-      ? state.angle + dt * 0.15
-      : state.angle
+    // ── Photon sphere / ISCO visibility ────────────────────────────────────────
+    state.bhGroup.children.forEach((child) => {
+      if (child.userData.isPhotonSphere) child.visible = showPS
+      if (child.userData.isISCO)         child.visible = showISCO
+    })
 
-    return { ...state, angle }
+    // ── Camera orbit ──────────────────────────────────────────────────────────
+    const el      = state.renderer.domElement
+    const mouseX  = (params._mouseX  as number) ?? -1
+    const mouseY  = (params._mouseY  as number) ?? -1
+    const dragging = !!(params._dragging as boolean)
+    const zoom    = (params._zoom as number) ?? 1
+
+    let { azimuth, elevation, prevMouseX, prevMouseY } = state
+
+    if (dragging && prevMouseX >= 0 && mouseX >= 0) {
+      azimuth   -= (mouseX - prevMouseX) / el.width  * Math.PI * 3
+      elevation  = clamp(
+        elevation + (mouseY - prevMouseY) / el.height * Math.PI,
+        -1.4, 1.4,
+      )
+    }
+    prevMouseX = mouseX
+    prevMouseY = mouseY
+
+    // Gentle auto-rotate when not dragging
+    if (!dragging) {
+      azimuth += safeDt * 0.12
+    }
+
+    const baseDist = 16
+    const d = baseDist / Math.max(0.1, zoom)
+
+    state.camera.position.set(
+      Math.sin(azimuth) * Math.cos(elevation) * d,
+      Math.sin(elevation) * d,
+      Math.cos(azimuth) * Math.cos(elevation) * d,
+    )
+    state.camera.lookAt(0, 0, 0)
+
+    // ── Accretion disk update ─────────────────────────────────────────────────
+    const isKerr = bhType === 'kerr' || bhType === 'kerr-newman'
+    const posAttr = state.diskPts.geometry.getAttribute('position') as THREE.BufferAttribute
+
+    for (let i = 0; i < N_DISK; i++) {
+      const r = state.diskR[i]
+      // Frame dragging: particles closer to EH orbit faster in Kerr spacetime
+      const frameDrag = isKerr ? (1 + 0.5 / Math.max(r, 0.01)) : 1.0
+      state.diskAngle[i] += state.diskOmega[i] * safeDt * speed * 0.5 * frameDrag
+
+      state.diskPos[i * 3]     = Math.cos(state.diskAngle[i]) * r
+      state.diskPos[i * 3 + 2] = Math.sin(state.diskAngle[i]) * r
+      // Y (height) stays unchanged — set at init time
+    }
+    posAttr.needsUpdate = true
+
+    // ── Jet update (Kerr / Kerr-Newman) ───────────────────────────────────────
+    const bh    = BH_TABLE[bhType] ?? BH_TABLE['schwarzschild']
+    const JET_H = 12
+    const r_eh  = bh.ehR
+
+    function advanceJet(pos: Float32Array, t: Float32Array, sign: number): void {
+      const attr = (sign > 0 ? state.jetPts1! : state.jetPts2!).geometry.getAttribute('position') as THREE.BufferAttribute
+      for (let i = 0; i < N_JET; i++) {
+        t[i] += safeDt * speed * 0.4
+        if (t[i] > 1) t[i] -= 1
+        const ti     = t[i]
+        const y      = sign * (r_eh + ti * JET_H)
+        const spread = ti * 0.3
+        const phi    = Math.atan2(pos[i * 3 + 2], pos[i * 3]) + safeDt * speed * 0.1
+        pos[i * 3]     = Math.cos(phi) * spread
+        pos[i * 3 + 1] = y
+        pos[i * 3 + 2] = Math.sin(phi) * spread
+      }
+      attr.needsUpdate = true
+    }
+
+    if (state.jetPts1 && state.jetPos1 && state.jetT1) {
+      advanceJet(state.jetPos1, state.jetT1, +1)
+    }
+    if (state.jetPts2 && state.jetPos2 && state.jetT2) {
+      advanceJet(state.jetPos2, state.jetT2, -1)
+    }
+
+    return {
+      ...state,
+      t:          state.t + safeDt,
+      azimuth,
+      elevation,
+      prevMouseX,
+      prevMouseY,
+    }
   },
 
-  render(state, canvas, params) {
-    const el         = canvas as HTMLCanvasElement
-    const ctx        = el.getContext('2d')
-    if (!ctx) return
+  // ── Render ──────────────────────────────────────────────────────────────────
 
-    const W          = el.width
-    const H          = el.height
-    const showISCO   = params.showISCO   as boolean
-    const showLabels = params.showLabels as boolean
-
-    // Background
-    ctx.fillStyle = '#080808'
-    ctx.fillRect(0, 0, W, H)
-
-    const cx    = W / 2
-    const cy    = H / 2
-    const scale = Math.min(W, H) / 28   // 1M = this many px
-
-    // Rotate entire scene
-    ctx.save()
-    ctx.translate(cx, cy)
-    ctx.rotate(state.angle)
-
-    // ── 1. Accretion disk glow ─────────────────────────────────────────────────
-    // Two semi-transparent ellipses simulating a foreshortened disk
-    // Draw only bottom half (lower semicircle) for 3D illusion
-    const diskR1 = 6 * scale          // r_ISCO
-    const diskR2 = 6 * 1.4 * scale
-    const diskRy = scale * 1.5        // foreshortening: flat ellipse
-
-    for (let pass = 0; pass < 2; pass++) {
-      const diskR = pass === 0 ? diskR2 : diskR1
-      const grad  = ctx.createRadialGradient(0, diskRy * 0.4, diskR * 0.3, 0, 0, diskR)
-      grad.addColorStop(0,   pass === 0 ? 'rgba(200,120,40,0.08)' : 'rgba(200,149,90,0.14)')
-      grad.addColorStop(0.6, pass === 0 ? 'rgba(200,120,40,0.05)' : 'rgba(200,149,90,0.07)')
-      grad.addColorStop(1,   'rgba(0,0,0,0)')
-
-      ctx.save()
-      ctx.scale(1, diskRy / diskR)
-      ctx.beginPath()
-      // Lower half arc only (0 → π, i.e. bottom semicircle in canvas coords)
-      ctx.arc(0, 0, diskR, 0, Math.PI)
-      ctx.fillStyle = grad
-      ctx.fill()
-      ctx.restore()
+  render(state, canvas, _params) {
+    const el = canvas as HTMLCanvasElement
+    const w  = el.width
+    const h  = el.height
+    if (
+      state.renderer.domElement.width  !== w ||
+      state.renderer.domElement.height !== h
+    ) {
+      state.renderer.setSize(w, h, false)
+      state.camera.aspect = w / h
+      state.camera.updateProjectionMatrix()
     }
-
-    // ── 2. Ray paths ──────────────────────────────────────────────────────────
-    for (const ray of state.rays) {
-      if (ray.pts.length < 2) continue
-
-      const nearPhotonSphere = Math.abs(ray.b - B_CRIT) < 0.5
-      const tB = Math.max(0, Math.min(1, (ray.b - 2.5) / (20 - 2.5)))
-
-      let strokeStyle: string
-      if (nearPhotonSphere) {
-        strokeStyle = 'rgba(255,255,255,0.9)'
-      } else if (ray.captured) {
-        // Copper → deep red
-        const rr  = Math.round(200 * (1 - tB) + 60 * tB)
-        const gg  = Math.round(80  * (1 - tB) + 0  * tB)
-        const bb  = Math.round(30  * (1 - tB) + 0  * tB)
-        strokeStyle = `rgba(${rr},${gg},${bb},0.7)`
-      } else {
-        // Blue (large b) → copper (small b near critical)
-        const rr  = Math.round(96  + (200 - 96)  * (1 - tB))
-        const gg  = Math.round(165 + (149 - 165) * (1 - tB))
-        const bb  = Math.round(250 + (90  - 250) * (1 - tB))
-        strokeStyle = `rgba(${rr},${gg},${bb},0.6)`
-      }
-
-      ctx.beginPath()
-      for (let i = 0; i < ray.pts.length; i++) {
-        const px = ray.pts[i].x * scale
-        const py = ray.pts[i].y * scale
-        if (i === 0) ctx.moveTo(px, py)
-        else         ctx.lineTo(px, py)
-      }
-      ctx.strokeStyle = strokeStyle
-      ctx.lineWidth   = nearPhotonSphere ? 1.4 : 0.9
-      ctx.stroke()
-    }
-
-    // ── 3. Photon sphere r = 3M ───────────────────────────────────────────────
-    ctx.beginPath()
-    ctx.arc(0, 0, 3 * scale, 0, Math.PI * 2)
-    ctx.setLineDash([5, 7])
-    ctx.strokeStyle = 'rgba(240,237,232,0.18)'
-    ctx.lineWidth   = 0.8
-    ctx.stroke()
-    ctx.setLineDash([])
-
-    // ── 4. ISCO r = 6M ────────────────────────────────────────────────────────
-    if (showISCO) {
-      ctx.beginPath()
-      ctx.arc(0, 0, 6 * scale, 0, Math.PI * 2)
-      ctx.setLineDash([6, 9])
-      ctx.strokeStyle = 'rgba(200,149,90,0.14)'
-      ctx.lineWidth   = 0.7
-      ctx.stroke()
-      ctx.setLineDash([])
-    }
-
-    // ── 5. Event horizon r = 2M (solid black + copper glow) ──────────────────
-    // Outer glow ring
-    const ehGrad = ctx.createRadialGradient(0, 0, 1.6 * scale, 0, 0, 2.6 * scale)
-    ehGrad.addColorStop(0,   'rgba(200,149,90,0.22)')
-    ehGrad.addColorStop(0.6, 'rgba(200,149,90,0.06)')
-    ehGrad.addColorStop(1,   'rgba(0,0,0,0)')
-    ctx.beginPath()
-    ctx.arc(0, 0, 2.6 * scale, 0, Math.PI * 2)
-    ctx.fillStyle = ehGrad
-    ctx.fill()
-
-    // Solid black disk
-    ctx.beginPath()
-    ctx.arc(0, 0, 2 * scale, 0, Math.PI * 2)
-    ctx.fillStyle = '#000000'
-    ctx.fill()
-
-    // ── 6. Labels ─────────────────────────────────────────────────────────────
-    if (showLabels) {
-      ctx.restore()   // undo rotation so labels stay upright
-      ctx.save()
-      ctx.font      = '10px monospace'
-      ctx.fillStyle = 'rgba(240,237,232,0.50)'
-
-      const labelX = cx + 2.1 * scale + 5
-      const labelY = cy
-
-      // Rs label at event horizon
-      ctx.fillStyle = 'rgba(200,149,90,0.65)'
-      ctx.fillText('Rs = 2M', cx + 2.15 * scale, cy - 6)
-
-      // Photon sphere label
-      ctx.fillStyle = 'rgba(240,237,232,0.45)'
-      ctx.fillText('photon sphere r = 3M', cx + 3.1 * scale, cy - 4 - 14)
-
-      // ISCO label (only if shown)
-      if (showISCO) {
-        ctx.fillStyle = 'rgba(200,149,90,0.40)'
-        ctx.fillText('ISCO r = 6M', cx + 6.15 * scale, cy - 4 - 28)
-      }
-
-      void labelX; void labelY  // suppress unused-var warnings
-    } else {
-      ctx.restore()
-      ctx.save()
-    }
-
-    ctx.restore()
+    state.renderer.render(state.scene, state.camera)
   },
 
-  // ── Controls ──────────────────────────────────────────────────────────────────
+  // ── Controls ────────────────────────────────────────────────────────────────
 
   getControls(): ControlDefinition[] {
     return [
       {
+        type:    'select',
+        id:      'bhType',
+        label:   '黑洞类型',
+        labelEn: 'Black hole type',
+        options: [
+          { value: 'schwarzschild', label: '史瓦西（无自旋）',              labelEn: 'Schwarzschild (no spin)' },
+          { value: 'kerr',          label: '克尔（自旋 a=0.9）',            labelEn: 'Kerr (spin a=0.9)' },
+          { value: 'reissner',      label: '莱斯纳-诺德斯特伦（带电）',     labelEn: 'Reissner-Nordström (charged)' },
+          { value: 'kerr-newman',   label: '克尔-纽曼（自旋+带电）',        labelEn: 'Kerr-Newman (spin+charge)' },
+        ],
+        default: 'schwarzschild',
+      },
+      {
         type:    'slider',
-        id:      'numRays',
-        label:   '光线数量',
-        labelEn: 'Ray count',
-        min:     8,
-        max:     40,
-        step:    2,
-        default: 20,
+        id:      'speed',
+        label:   '速度',
+        labelEn: 'Speed',
+        min:     0.1,
+        max:     4,
+        step:    0.1,
+        default: 1,
+      },
+      {
+        type:    'toggle',
+        id:      'showPhotonSphere',
+        label:   '光子球',
+        labelEn: 'Photon sphere',
+        default: true,
       },
       {
         type:    'toggle',
         id:      'showISCO',
-        label:   '显示ISCO',
-        labelEn: 'Show ISCO',
+        label:   'ISCO环',
+        labelEn: 'ISCO ring',
         default: true,
-      },
-      {
-        type:    'toggle',
-        id:      'showLabels',
-        label:   '显示标签',
-        labelEn: 'Show labels',
-        default: true,
-      },
-      {
-        type:    'toggle',
-        id:      'rotate',
-        label:   '自动旋转',
-        labelEn: 'Auto-rotate',
-        default: false,
       },
     ]
   },
 
-  destroy() {},
+  // ── Destroy ─────────────────────────────────────────────────────────────────
+
+  destroy(canvas) {
+    const renderer = rendererStore.get(canvas)
+    if (renderer) {
+      renderer.dispose()
+      rendererStore.delete(canvas)
+    }
+  },
 }
 
-export default Schwarzschild
+export default SchwarzschildModule

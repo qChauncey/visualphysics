@@ -266,7 +266,8 @@ const HydrogenOrbitalModule: PhysicsModule<HydrogenState> = {
     prevMouseX = mouseX; prevMouseY = mouseY
 
     const rmax = RMAX[orbital] ?? 20
-    const d    = rmax * 1.4
+    const zoom = (params._zoom as number) ?? 1
+    const d    = (rmax * 1.4) / Math.max(0.1, zoom)
     state.camera.position.set(
       Math.sin(azimuth) * Math.cos(elevation) * d,
       Math.sin(elevation) * d,

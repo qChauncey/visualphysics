@@ -258,7 +258,8 @@ const HiggsFieldModule: PhysicsModule<HiggsState> = {
   // ── Tick ──────────────────────────────────────────────────────────────────
 
   tick(state, dt, params): HiggsState {
-    const temp   = params.temp   as number
+    const zoom   = (params._zoom as number) ?? 1
+    const temp   = Math.max(0, Math.min(2.5, (params.temp as number) / Math.max(0.1, zoom)))
     const rotate = params.rotate as boolean
     const wire   = params.wire   as boolean
 

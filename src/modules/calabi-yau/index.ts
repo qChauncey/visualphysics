@@ -217,6 +217,9 @@ const CalabiYauModule: PhysicsModule<CYState> = {
     state.group.rotation.y = angle
     state.group.rotation.x = Math.sin(angle * 0.41) * 0.28
 
+    const zoom = (params._zoom as number) ?? 1
+    state.camera.position.z = 2.8 / Math.max(0.1, zoom)
+
     return { ...state, angle, lastN: n, lastWire: wire }
   },
 

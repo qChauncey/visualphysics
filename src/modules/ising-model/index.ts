@@ -71,7 +71,8 @@ const IsingModelModule: PhysicsModule<IsingState> = {
       imageData = null
     }
 
-    const T = params.temp as number
+    const zoom  = (params._zoom as number) ?? 1
+    const T     = Math.max(0.5, Math.min(5, (params.temp as number) / Math.max(0.1, zoom)))
     const speed = params.speed as number
     const stepsPerFrame = Math.max(1, Math.round(speed * N * N / 4))
 
