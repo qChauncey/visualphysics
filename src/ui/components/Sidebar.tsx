@@ -10,32 +10,43 @@ const CATEGORIES = [
   {
     key: 'catClassical' as const,
     modules: [
-      { id: 'double-pendulum',     num: '01', zh: '双摆混沌',        en: 'Double Pendulum',    ready: true  },
+      { id: 'double-pendulum',     num: '01', zh: '双摆混沌',        en: 'Double Pendulum',     ready: true },
+      { id: 'three-body',          num: '11', zh: '三体问题',        en: 'Three-Body Problem',  ready: true },
     ],
   },
   {
     key: 'catQuantum' as const,
     modules: [
-      { id: 'hydrogen-orbital',    num: '02', zh: '氢原子轨道',      en: 'Hydrogen Orbitals',  ready: true  },
-      { id: 'double-slit',         num: '04', zh: '双缝实验',        en: 'Double Slit',        ready: true  },
+      { id: 'hydrogen-orbital',    num: '02', zh: '氢原子轨道',      en: 'Hydrogen Orbitals',   ready: true },
+      { id: 'double-slit',         num: '04', zh: '双缝实验',        en: 'Double Slit',         ready: true },
+      { id: 'ising-model',         num: '10', zh: '伊辛模型',        en: 'Ising Model',         ready: true },
     ],
   },
   {
     key: 'catAstro' as const,
     modules: [
-      { id: 'space-scale',         num: '03', zh: '宇宙尺度',        en: 'Cosmic Scale',       ready: true  },
+      { id: 'space-scale',         num: '03', zh: '宇宙尺度',        en: 'Cosmic Scale',        ready: true },
     ],
   },
   {
     key: 'catGR' as const,
     modules: [
-      { id: 'spacetime-curvature', num: '05', zh: '时空曲率',        en: 'Spacetime Curvature',ready: true  },
+      { id: 'spacetime-curvature', num: '05', zh: '时空曲率',        en: 'Spacetime Curvature', ready: true },
+      { id: 'gravitational-waves', num: '07', zh: '引力波',          en: 'Gravitational Waves', ready: true },
+      { id: 'schwarzschild',       num: '12', zh: '史瓦西黑洞',      en: 'Schwarzschild BH',    ready: true },
+    ],
+  },
+  {
+    key: 'catParticle' as const,
+    modules: [
+      { id: 'higgs-field',         num: '09', zh: '希格斯场',        en: 'Higgs Field',         ready: true },
+      { id: 'feynman-diagrams',    num: '08', zh: '费曼图',          en: 'Feynman Diagrams',    ready: true },
     ],
   },
   {
     key: 'catString' as const,
     modules: [
-      { id: 'calabi-yau',          num: '06', zh: 'Calabi-Yau 流形', en: 'Calabi-Yau Manifold',ready: true  },
+      { id: 'calabi-yau',          num: '06', zh: 'Calabi-Yau 流形', en: 'Calabi-Yau Manifold', ready: true },
     ],
   },
 ] as const

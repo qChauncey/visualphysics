@@ -32,6 +32,7 @@ export const UI = {
     catQuantum:    'QUANTUM MECHANICS',
     catAstro:      'ASTROPHYSICS',
     catGR:         'GENERAL RELATIVITY',
+    catParticle:   'PARTICLE PHYSICS',
     catString:     'STRING THEORY',
 
     // Sidebar footer
@@ -59,6 +60,7 @@ export const UI = {
     catQuantum:    'QUANTUM MECHANICS',
     catAstro:      'ASTROPHYSICS',
     catGR:         'GENERAL RELATIVITY',
+    catParticle:   'PARTICLE PHYSICS',
     catString:     'STRING THEORY',
 
     // Sidebar footer
