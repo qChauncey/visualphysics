@@ -57,15 +57,19 @@ const COMP_CENTER_X =
 type BodyMesh = { mesh: THREE.Mesh; orbitR: number; period: number; angle: number }
 
 type SpaceState = {
-  renderer:    THREE.WebGLRenderer
-  scene:       THREE.Scene
-  camera:      THREE.PerspectiveCamera
-  bodyGroup:   THREE.Group
-  bodies:      BodyMesh[]
-  sunLight:    THREE.PointLight
-  cameraAngle: number
-  lastMode:    string
-  lastSizeExp: number
+  renderer:      THREE.WebGLRenderer
+  scene:         THREE.Scene
+  camera:        THREE.PerspectiveCamera
+  bodyGroup:     THREE.Group
+  bodies:        BodyMesh[]
+  sunLight:      THREE.PointLight
+  cameraAngle:   number
+  orbitAzimuth:  number   // manual drag offset
+  orbitElevation: number  // manual tilt (0 = default, clamped ±0.6)
+  prevMouseX:    number
+  prevMouseY:    number
+  lastMode:      string
+  lastSizeExp:   number
 }
 
 // WeakMap lets destroy() reach the renderer without global mutation
@@ -237,9 +241,13 @@ const SpaceScaleModule: PhysicsModule<SpaceState> = {
       bodyGroup,
       bodies,
       sunLight,
-      cameraAngle: 0,
-      lastMode:    'comparison',
-      lastSizeExp: params.sizeExp as number ?? 30,
+      cameraAngle:    0,
+      orbitAzimuth:   0,
+      orbitElevation: 0,
+      prevMouseX:     -1,
+      prevMouseY:     -1,
+      lastMode:       'comparison',
+      lastSizeExp:    params.sizeExp as number ?? 30,
     }
   },
 
@@ -247,6 +255,22 @@ const SpaceScaleModule: PhysicsModule<SpaceState> = {
     const mode    = params.mode    as string
     const camSpd  = params.camSpeed as number
     const sizeExp = params.sizeExp  as number
+
+    // ── Mouse-drag orbit ──────────────────────────────────────────────────────
+    const mouseX  = params._mouseX   as number ?? -1
+    const mouseY  = params._mouseY   as number ?? -1
+    const dragging = params._dragging as boolean ?? false
+    let { orbitAzimuth, orbitElevation, prevMouseX, prevMouseY } = state
+
+    if (dragging && prevMouseX >= 0 && mouseX >= 0) {
+      const el = state.renderer.domElement
+      const dx = (mouseX - prevMouseX) / el.width
+      const dy = (mouseY - prevMouseY) / el.height
+      orbitAzimuth   -= dx * Math.PI * 3
+      orbitElevation  = Math.max(-0.55, Math.min(0.75, orbitElevation - dy * 2))
+    }
+    prevMouseX = mouseX
+    prevMouseY = mouseY
 
     let { bodies, lastMode, lastSizeExp, bodyGroup, sunLight, cameraAngle } = state
 
@@ -262,7 +286,8 @@ const SpaceScaleModule: PhysicsModule<SpaceState> = {
       lastSizeExp = sizeExp
     }
 
-    cameraAngle += dt * camSpd * 0.28
+    // Only auto-rotate when not manually dragging
+    if (!dragging) cameraAngle += dt * camSpd * 0.28
 
     if (mode === 'orbit') {
       // Advance orbital angles
@@ -278,27 +303,29 @@ const SpaceScaleModule: PhysicsModule<SpaceState> = {
         return { ...b, angle: newAngle }
       })
 
-      // Camera circles above the solar plane
+      // Camera circles above the solar plane (+ manual drag offset)
       const camDist = params.camDist as number
-      state.camera.position.set(
-        Math.cos(cameraAngle) * camDist,
-        camDist * 0.55,
-        Math.sin(cameraAngle) * camDist,
-      )
+      const angle   = cameraAngle + orbitAzimuth
+      const elevY   = camDist * (0.55 + orbitElevation)
+      const elevR   = Math.sqrt(Math.max(0.01, camDist * camDist - elevY * elevY))
+      state.camera.position.set(Math.cos(angle) * elevR, elevY, Math.sin(angle) * elevR)
       state.camera.lookAt(0, 0, 0)
 
-      return { ...state, bodies: updatedBodies, lastMode, lastSizeExp, cameraAngle }
+      return { ...state, bodies: updatedBodies, lastMode, lastSizeExp, cameraAngle, orbitAzimuth, orbitElevation, prevMouseX, prevMouseY }
     }
 
-    // Comparison mode — camera gently orbits the lineup
+    // Comparison mode — camera orbits + manual drag
+    const angle = cameraAngle + orbitAzimuth
+    const baseR = 11
+    const elevY = 3.5 + orbitElevation * 5
     state.camera.position.set(
-      COMP_CENTER_X + Math.cos(cameraAngle) * 11,
-      3.5,
-      Math.sin(cameraAngle) * 11,
+      COMP_CENTER_X + Math.cos(angle) * baseR,
+      elevY,
+      Math.sin(angle) * baseR,
     )
     state.camera.lookAt(COMP_CENTER_X, 0, 0)
 
-    return { ...state, bodies, lastMode, lastSizeExp, cameraAngle }
+    return { ...state, bodies, lastMode, lastSizeExp, cameraAngle, orbitAzimuth, orbitElevation, prevMouseX, prevMouseY }
   },
 
   render(state, canvas, _params) {
