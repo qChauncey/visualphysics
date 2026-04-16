@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { LangProvider } from '@/core/i18n'
+import PageTracker from '@/ui/components/PageTracker'
 
 export const metadata: Metadata = {
   title: '物理可视化 · Physics Viz',
@@ -19,7 +20,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="font-sans antialiased">
-        <LangProvider>{children}</LangProvider>
+        <LangProvider>
+          <PageTracker />
+          {children}
+        </LangProvider>
       </body>
     </html>
   )
