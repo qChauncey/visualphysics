@@ -5,10 +5,11 @@ import { useEffect, useState } from 'react'
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 interface AnalyticsData {
-  total:     number
-  daily:     { date: string;   count: number }[]
-  monthly:   { month: string;  count: number }[]
-  modules:   { module: string; count: number }[]
+  total:         number
+  totalVisitors: number
+  daily:     { date: string;   count: number; visitors: number }[]
+  monthly:   { month: string;  count: number; visitors: number }[]
+  modules:   { module: string; count: number; visitors: number }[]
   countries: { country: string; count: number }[]
   devices:   { device: string; count: number }[]
   langs:     { lang: string;   count: number }[]
@@ -32,24 +33,35 @@ function countryFlag(code: string): string {
 
 // ── SVG Line Chart ─────────────────────────────────────────────────────────────
 
-function LineChart({ data, xKey, yKey, label }: {
-  data:  Record<string, string | number>[]
-  xKey:  string
-  yKey:  string
-  label: string
+const BLUE = '#7eb8e8'
+
+function LineChart({ data, xKey, yKey, y2Key, label }: {
+  data:   Record<string, string | number>[]
+  xKey:   string
+  yKey:   string
+  y2Key?: string
+  label:  string
 }) {
   const W = 560, H = 140, PL = 36, PR = 12, PT = 12, PB = 28
   const iW = W - PL - PR, iH = H - PT - PB
 
   if (!data.length) return <EmptyChart label={label} w={W} h={H} />
 
-  const vals   = data.map(d => Number(d[yKey]))
-  const maxVal = Math.max(...vals, 1)
-  const pts    = data.map((d, i) => {
-    const x = PL + (i / Math.max(data.length - 1, 1)) * iW
-    const y = PT + iH - (Number(d[yKey]) / maxVal) * iH
-    return `${x},${y}`
-  })
+  const vals1  = data.map(d => Number(d[yKey]))
+  const vals2  = y2Key ? data.map(d => Number(d[y2Key])) : []
+  const maxVal = Math.max(...vals1, ...(y2Key ? vals2 : []), 1)
+
+  function makePts(key: string) {
+    return data.map((d, i) => {
+      const x = PL + (i / Math.max(data.length - 1, 1)) * iW
+      const y = PT + iH - (Number(d[key]) / maxVal) * iH
+      return `${x},${y}`
+    })
+  }
+
+  const pts1 = makePts(yKey)
+  const pts2 = y2Key ? makePts(y2Key) : []
+
   const area = [
     `M${PL},${PT + iH}`,
     ...data.map((d, i) => {
@@ -60,27 +72,35 @@ function LineChart({ data, xKey, yKey, label }: {
     `L${PL + iW},${PT + iH}Z`,
   ].join(' ')
 
-  // X-axis labels: show ~5 evenly
-  const step = Math.max(1, Math.floor(data.length / 5))
+  const step    = Math.max(1, Math.floor(data.length / 5))
   const xLabels = data.filter((_, i) => i % step === 0 || i === data.length - 1)
 
   return (
     <svg width={W} height={H} className="overflow-visible">
-      {/* Area fill */}
       <defs>
         <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%"   stopColor={COPPER} stopOpacity={0.25} />
           <stop offset="100%" stopColor={COPPER} stopOpacity={0.01} />
         </linearGradient>
       </defs>
+      {/* Area fill (pageviews) */}
       <path d={area} fill="url(#areaGrad)" />
-      {/* Line */}
-      <polyline points={pts.join(' ')} fill="none" stroke={COPPER} strokeWidth={1.8} strokeLinejoin="round" />
-      {/* Dots */}
-      {pts.map((pt, i) => {
+      {/* Pageviews line */}
+      <polyline points={pts1.join(' ')} fill="none" stroke={COPPER} strokeWidth={1.8} strokeLinejoin="round" />
+      {pts1.map((pt, i) => {
         const [x, y] = pt.split(',').map(Number)
         return <circle key={i} cx={x} cy={y} r={2.5} fill={COPPER} />
       })}
+      {/* Visitors line (optional) */}
+      {y2Key && (
+        <>
+          <polyline points={pts2.join(' ')} fill="none" stroke={BLUE} strokeWidth={1.4} strokeLinejoin="round" strokeDasharray="3 2" />
+          {pts2.map((pt, i) => {
+            const [x, y] = pt.split(',').map(Number)
+            return <circle key={i} cx={x} cy={y} r={2} fill={BLUE} />
+          })}
+        </>
+      )}
       {/* Y gridlines */}
       {[0.25, 0.5, 0.75, 1].map(frac => {
         const y = PT + iH - frac * iH
@@ -105,6 +125,15 @@ function LineChart({ data, xKey, yKey, label }: {
           </text>
         )
       })}
+      {/* Legend */}
+      {y2Key && (
+        <g transform={`translate(${PL + iW - 120}, ${PT})`}>
+          <line x1={0} y1={5} x2={14} y2={5} stroke={COPPER} strokeWidth={1.8} />
+          <text x={17} y={9} fontSize={7.5} fill={DIM}>pageviews</text>
+          <line x1={60} y1={5} x2={74} y2={5} stroke={BLUE} strokeWidth={1.4} strokeDasharray="3 2" />
+          <text x={77} y={9} fontSize={7.5} fill={DIM}>visitors</text>
+        </g>
+      )}
     </svg>
   )
 }
@@ -326,11 +355,15 @@ export default function AdminStats() {
   )
 
   // Compute today's and yesterday's views for summary
-  const todayStr     = new Date().toISOString().slice(0, 10)
-  const yesterdayStr = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
-  const todayViews     = data.daily.find(d => d.date === todayStr)?.count     ?? 0
-  const yesterdayViews = data.daily.find(d => d.date === yesterdayStr)?.count ?? 0
-  const last30         = data.daily.reduce((s, d) => s + d.count, 0)
+  const todayStr        = new Date().toISOString().slice(0, 10)
+  const yesterdayStr    = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+  const todayEntry      = data.daily.find(d => d.date === todayStr)
+  const yesterdayEntry  = data.daily.find(d => d.date === yesterdayStr)
+  const todayViews      = todayEntry?.count     ?? 0
+  const todayVisitors   = todayEntry?.visitors  ?? 0
+  const yesterdayViews  = yesterdayEntry?.count ?? 0
+  const last30          = data.daily.reduce((s, d) => s + d.count, 0)
+  const last30Visitors  = data.daily.reduce((s, d) => s + d.visitors, 0)
 
   return (
     <div className="min-h-screen px-6 py-10 md:px-12" style={{ background: BG, color: TEXT }}>
@@ -346,21 +379,28 @@ export default function AdminStats() {
       </div>
 
       {/* Summary cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+        <StatCard label="Total pageviews"  value={data.total.toLocaleString()} />
+        <StatCard label="Total visitors"   value={data.totalVisitors.toLocaleString()} />
+        <StatCard label="Today views"      value={todayViews} />
+        <StatCard label="Today visitors"   value={todayVisitors} />
+      </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <StatCard label="Total pageviews" value={data.total.toLocaleString()} />
-        <StatCard label="Last 30 days"    value={last30.toLocaleString()} />
-        <StatCard label="Today"           value={todayViews} />
-        <StatCard label="Yesterday"       value={yesterdayViews} />
+        <StatCard label="Last 30d views"    value={last30.toLocaleString()} />
+        <StatCard label="Last 30d visitors" value={last30Visitors.toLocaleString()} />
+        <StatCard label="Yesterday views"   value={yesterdayViews} />
+        <StatCard label="Yesterday visitors" value={yesterdayEntry?.visitors ?? 0} />
       </div>
 
       {/* Daily chart */}
       <div className="grid grid-cols-1 gap-3 mb-3">
-        <Card title="Daily pageviews — last 30 days" wide>
+        <Card title="Daily pageviews + visitors — last 30 days" wide>
           <div className="overflow-x-auto">
             <LineChart
               data={data.daily as unknown as Record<string, string | number>[]}
               xKey="date"
               yKey="count"
+              y2Key="visitors"
               label="Daily pageviews"
             />
           </div>
@@ -383,12 +423,26 @@ export default function AdminStats() {
       {/* Modules + Countries */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
         <Card title="Top modules">
-          <HBarChart
-            data={data.modules as unknown as Record<string, string | number>[]}
-            nameKey="module"
-            valueKey="count"
-            maxRows={12}
-          />
+          <div className="space-y-1">
+            {data.modules.slice(0, 12).map((m, i) => {
+              const maxCount = Math.max(...data.modules.map(x => x.count), 1)
+              const pct = (m.count / maxCount) * 100
+              return (
+                <div key={i} className="flex items-center gap-2">
+                  <span className="font-mono text-[9px] w-28 truncate shrink-0" style={{ color: TEXT, opacity: 0.6 }}>
+                    {m.module}
+                  </span>
+                  <div className="flex-1 h-[6px] rounded-sm overflow-hidden" style={{ background: FAINT }}>
+                    <div className="h-full rounded-sm" style={{ width: `${pct}%`, background: COPPER, opacity: 0.75 }} />
+                  </div>
+                  <span className="font-mono text-[9px] w-6 text-right shrink-0" style={{ color: DIM }}>{m.count}</span>
+                  <span className="font-mono text-[9px] w-10 text-right shrink-0" style={{ color: BLUE, opacity: 0.8 }}>
+                    {m.visitors}v
+                  </span>
+                </div>
+              )
+            })}
+          </div>
         </Card>
         <Card title="Top countries">
           <div className="space-y-1">

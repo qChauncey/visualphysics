@@ -9,10 +9,11 @@ function parseDevice(ua: string): 'mobile' | 'tablet' | 'desktop' {
 
 export async function POST(req: NextRequest) {
   try {
-    const { path, module, lang } = await req.json() as {
-      path?:   string
-      module?: string | null
-      lang?:   string
+    const { path, module, lang, sessionId } = await req.json() as {
+      path?:      string
+      module?:    string | null
+      lang?:      string
+      sessionId?: string
     }
 
     const country = req.headers.get('x-vercel-ip-country') ?? 'unknown'
@@ -21,13 +22,14 @@ export async function POST(req: NextRequest) {
 
     await ensureSchema()
     await sql`
-      INSERT INTO page_views (path, module, country, device, lang)
+      INSERT INTO page_views (path, module, country, device, lang, session_id)
       VALUES (
-        ${path   ?? ''},
-        ${module ?? null},
+        ${path      ?? ''},
+        ${module    ?? null},
         ${country},
         ${device},
-        ${lang   ?? 'en'}
+        ${lang      ?? 'en'},
+        ${sessionId ?? ''}
       )
     `
     return NextResponse.json({ ok: true })
