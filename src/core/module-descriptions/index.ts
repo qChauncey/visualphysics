@@ -20,12 +20,12 @@ export const MODULE_DESCRIPTIONS: Record<string, ModuleDescription> = {
 
   'double-pendulum': {
     whatYouSee: {
-      zh: '两根通过铰链串联的摆杆在重力下自由运动，屏幕上留下两种颜色的运动轨迹。两摆从几乎相同的初始角度出发，轨迹在短时间内便完全分叉，直观展示[混沌|chaos]的本质。',
-      en: 'Two hinged rods swing freely under gravity, painting coloured trails on screen. Two pendulums started from nearly identical angles diverge rapidly — a vivid demonstration of [chaos|chaos] and sensitivity to initial conditions.',
+      zh: '两根通过铰链串联的摆杆在重力下自由运动，屏幕上留下两种颜色的[相空间|phase-space]轨迹。两摆从几乎相同的初始角度出发，轨迹在短时间内便完全分叉，直观展示[混沌|chaos]对初始条件的敏感性。',
+      en: 'Two hinged rods swing freely under gravity, painting coloured trails — projections of their [phase-space|phase-space] trajectory — on screen. Two pendulums started from nearly identical angles diverge rapidly: a vivid demonstration of [chaos|chaos] and sensitivity to initial conditions.',
     },
     physics: {
-      zh: '双摆是最简单的[混沌|chaos]系统之一。运动由拉格朗日力学导出的两个耦合非线性常微分方程描述，用[龙格–库塔法|rk4]数值积分。正的[李雅普诺夫指数|lyapunov]意味着微小的初始差异以指数速率放大，使长期预测成为不可能。',
-      en: 'The double pendulum is one of the simplest [chaotic|chaos] systems. Its motion follows two coupled nonlinear ODEs derived from [Lagrangian|lagrangian] mechanics, integrated numerically with [Runge–Kutta|rk4]. A positive [Lyapunov exponent|lyapunov] quantifies the exponential divergence of nearby trajectories.',
+      zh: '双摆是最简单的[混沌|chaos]系统之一。运动由[最小作用量原理|action-principle]推导出的[拉格朗日|lagrangian]方程组描述，两个耦合非线性常微分方程用[龙格–库塔法|rk4]数值积分。正的[李雅普诺夫指数|lyapunov]意味着微小的初始差异以指数速率放大，使长期预测成为不可能。',
+      en: 'The double pendulum is one of the simplest [chaotic|chaos] systems. Its motion follows coupled nonlinear ODEs derived from the [principle of least action|action-principle] via [Lagrangian|lagrangian] mechanics, integrated numerically with [Runge–Kutta|rk4]. A positive [Lyapunov exponent|lyapunov] quantifies the exponential divergence of nearby trajectories.',
     },
     equation: 'λ = lim_{t→∞} (1/t) ln|δθ(t)/δθ(0)|',
     history: {
@@ -40,8 +40,8 @@ export const MODULE_DESCRIPTIONS: Record<string, ModuleDescription> = {
       en: 'The probability density |ψ|² of a hydrogen electron displayed as a colour map on a 2D cross-section — brighter means more likely to find the electron. Switch between orbitals (1s, 2s, 2p, 3d, …) to see their nodal surfaces and symmetry.',
     },
     physics: {
-      zh: '氢原子的[波函数|wavefunction] ψ_{nlm}(r,θ,φ) 是薛定谔方程的精确解，由主[量子数|quantum-number] n、角量子数 l 和磁量子数 m 唯一确定。径向部分为拉盖尔多项式，角向部分为球谐函数 Y_l^m。|ψ|² 给出电子云的概率密度分布。',
-      en: 'The hydrogen [wavefunction|wavefunction] ψ_{nlm}(r,θ,φ) is an exact solution of the Schrödinger equation, labelled by [quantum numbers|quantum-number] n, l, m. The radial part involves Laguerre polynomials; the angular part is spherical harmonics Y_l^m. The displayed |ψ|² is the probability density.',
+      zh: '氢原子的[波函数|wavefunction] ψ_{nlm}(r,θ,φ) 是薛定谔方程的精确解，由主[量子数|quantum-number] n、角量子数 l 和磁量子数 m 唯一确定，加上电子[自旋|spin]量子数 mₛ = ±1/2 共四个量子数。[泡利不相容原理|pauli-exclusion]规定每个轨道最多容纳两个[自旋|spin]相反的电子，决定了元素的壳层结构。轨道尺寸由[不确定性原理|uncertainty]设置下界：Δr·Δp ≥ ħ/2。',
+      en: 'The hydrogen [wavefunction|wavefunction] ψ_{nlm}(r,θ,φ) is an exact Schrödinger solution, labelled by [quantum numbers|quantum-number] n, l, m, plus the electron [spin|spin] quantum number mₛ = ±1/2. The [Pauli exclusion principle|pauli-exclusion] allows at most two opposite-[spin|spin] electrons per orbital, dictating the periodic table shell structure. Orbital size is bounded below by the [uncertainty principle|uncertainty]: Δr·Δp ≥ ħ/2.',
     },
     equation: 'Eₙ = −13.6 eV / n²',
     history: {
@@ -56,8 +56,8 @@ export const MODULE_DESCRIPTIONS: Record<string, ModuleDescription> = {
       en: 'A continuous zoom from subatomic scales to the observable universe. A logarithmic slider controls the viewing scale, arranging bodies by relative size — spanning 41 orders of magnitude from the proton (10⁻¹⁵ m) to the cosmic web (10²⁶ m).',
     },
     physics: {
-      zh: '宇宙各结构跨越的尺度范围远超人类直觉。[引力势|grav-potential]主导了行星到宇宙大尺度结构的形成，而核力主导了 10⁻¹⁵ m 尺度。对数尺度是唯一能在有限屏幕上呈现如此巨大跨度的方式。',
-      en: 'The universe\'s structures span scales far beyond human intuition. [Gravitational potential|grav-potential] governs structure formation from planets to cosmic webs; nuclear forces dominate at 10⁻¹⁵ m. The logarithmic scale is the only way to represent such a range on a finite screen.',
+      zh: '宇宙各结构跨越的尺度范围远超人类直觉。[引力势|grav-potential]主导了行星到宇宙大尺度结构的形成，而核力主导了 10⁻¹⁵ m 尺度。宇宙加速膨胀由[暗能量|dark-energy]驱动（占总能量 68%），可观测宇宙的大小由[哈勃常数|hubble-constant]决定。对数尺度是唯一能在有限屏幕上呈现如此巨大跨度的方式。',
+      en: 'The universe\'s structures span scales far beyond human intuition. [Gravitational potential|grav-potential] governs formation from planets to cosmic webs; nuclear forces dominate at 10⁻¹⁵ m. The accelerating expansion is driven by [dark energy|dark-energy] (68% of the total energy budget), and the size of the observable universe is set by the [Hubble constant|hubble-constant]. A logarithmic scale is the only way to represent this range on a finite screen.',
     },
     history: {
       zh: 'Charles and Ray Eames 于 1977 年制作的纪录片《十的次方》（Powers of Ten）是对宇宙尺度最经典的可视化之一，从人到宇宙再回到细胞核用了不到 10 分钟，深刻影响了此后的科普教育。',
@@ -70,12 +70,12 @@ export const MODULE_DESCRIPTIONS: Record<string, ModuleDescription> = {
 
   'double-slit': {
     whatYouSee: {
-      zh: '单个粒子（光子或电子）逐一通过双缝后落在探测屏上，随着粒子数积累，[量子干涉|interference]条纹逐渐显现。可切换"观察"模式——一旦测量粒子经过哪条缝，干涉条纹便立即消失。',
-      en: 'Individual particles (photons or electrons) arrive one by one at a detector screen. As counts accumulate, [quantum interference|interference] fringes emerge from seemingly random hits. Switching to "observed" mode — which-path measurement — destroys the fringes instantly.',
+      zh: '单个[光子|photon]或电子逐一通过双缝后落在探测屏上，随着粒子数积累，[量子干涉|interference]条纹逐渐显现。可切换"观察"模式——一旦测量粒子经过哪条缝，干涉条纹便立即消失。',
+      en: 'Individual [photons|photon] or electrons arrive one by one at a detector screen. As counts accumulate, [quantum interference|interference] fringes emerge from seemingly random hits. Switching to "observed" mode — which-path measurement — destroys the fringes instantly.',
     },
     physics: {
-      zh: '双缝实验是[波粒二象性|wave-particle]最直接的实验证明。每个粒子以[波函数|wavefunction]形式同时通过两条缝，两路振幅叠加产生[干涉|interference]图样。一旦测量粒子的路径信息，叠加态[坍缩|collapse]，干涉消失。干涉条纹位置由 I(θ) = cos²(πd sinθ/λ) 描述。',
-      en: 'The double-slit experiment is the clearest demonstration of [wave–particle duality|wave-particle]. Each particle\'s [wavefunction|wavefunction] passes through both slits simultaneously; the two amplitudes [interfere|interference]. Measuring which slit the particle took collapses the superposition and destroys the fringes. Fringe spacing is set by I(θ) ∝ cos²(πd sinθ/λ).',
+      zh: '双缝实验是[波粒二象性|wave-particle]最直接的实验证明。每个粒子以[波函数|wavefunction]形式处于经过两条缝的[叠加态|superposition]，两路振幅叠加产生[干涉|interference]图样。一旦测量粒子的路径信息，叠加态[坍缩|collapse]，干涉消失——这一过程与[退相干|decoherence]密切相关。',
+      en: 'The double-slit experiment is the clearest demonstration of [wave–particle duality|wave-particle]. Each particle\'s [wavefunction|wavefunction] exists in a [superposition|superposition] of paths through both slits; the two amplitudes [interfere|interference]. Measuring which slit the particle took collapses the superposition — a process closely related to [decoherence|decoherence].',
     },
     equation: 'I(θ) = sinc²(πa sinθ/λ) · cos²(πd sinθ/λ)',
     history: {
@@ -140,8 +140,8 @@ export const MODULE_DESCRIPTIONS: Record<string, ModuleDescription> = {
       en: 'Interactive [Feynman diagrams|feynman-diag] for electron–electron scattering in QED: the tree-level diagram (photon exchange) and one-loop corrections. Click a diagram to highlight propagators and vertices with their mathematical expressions.',
     },
     physics: {
-      zh: '[费曼图|feynman-diag]是量子场论微扰展开的图形语言。每条内线对应一个[传播子|propagator]，每个顶点对应一个耦合常数。内线代表的是[虚粒子|virtual-particle]——不满足在壳条件的中间态。圈图贡献来自对内线动量的积分，需要重整化处理发散。',
-      en: '[Feynman diagrams|feynman-diag] are the graphical language of QFT perturbation theory. Each internal line is a [propagator|propagator]; each vertex is a coupling constant. Internal lines represent [virtual particles|virtual-particle] — off-shell intermediate states. Loop diagrams involve momentum integrals that require renormalisation to handle divergences.',
+      zh: '[费曼图|feynman-diag]是量子场论微扰展开的图形语言，源于费曼对[路径积分|path-integral]的图形化诠释。每条内线对应一个[传播子|propagator]，每个顶点对应一个耦合常数。内线代表[虚粒子|virtual-particle]——[费米子|fermion]用箭头线、[玻色子|boson]用波浪线表示。圈图动量积分产生紫外发散，需通过[重整化|renormalization]得到有限结果。',
+      en: '[Feynman diagrams|feynman-diag] are the graphical encoding of QFT perturbation theory, arising from Feynman\'s [path-integral|path-integral] formulation. Each internal line is a [propagator|propagator]; each vertex is a coupling constant. Internal [fermion|fermion] lines carry arrows; [boson|boson] lines are wavy or dashed. Loop integrals produce ultraviolet divergences handled by [renormalization|renormalization].',
     },
     equation: 'M = (−ie)² ū(p₃)γᵘu(p₁) · (−igᵘᵛ/q²) · ū(p₄)γᵥu(p₂)',
     history: {
@@ -156,8 +156,8 @@ export const MODULE_DESCRIPTIONS: Record<string, ModuleDescription> = {
       en: 'The "Mexican hat" Higgs potential spins in 3D; a scalar field excitation (copper sphere) oscillates at the bottom of the well. Adjust the potential parameters to watch [spontaneous symmetry breaking|ssb] occur as the false vacuum becomes unstable.',
     },
     physics: {
-      zh: '[希格斯场|higgs-mech]是标准模型中充满整个空间的标量场，其[真空期望值|vev] v ≈ 246 GeV 通过[希格斯机制|higgs-mech]赋予 W/Z 玻色子和费米子质量。势能 V(φ) = −μ²|φ|² + λ|φ|⁴ 的"帽沿"对应[自发对称破缺|ssb]后的真空简并。希格斯玻色子是场在真空附近的量子化激发。',
-      en: 'The [Higgs field|higgs-mech] is a scalar field permeating all space whose [vacuum expectation value|vev] v ≈ 246 GeV gives masses to W/Z bosons and fermions via the [Higgs mechanism|higgs-mech]. The potential V(φ) = −μ²|φ|² + λ|φ|⁴ creates a degenerate "brim" of minima after [spontaneous symmetry breaking|ssb]. The Higgs boson is the quantum of field oscillations about the vacuum.',
+      zh: '[希格斯场|higgs-mech]是标准模型中充满整个空间的标量场，其[真空期望值|vev] v ≈ 246 GeV 通过[希格斯机制|higgs-mech]打破 SU(2)×U(1) [规范对称性|gauge-symmetry]，赋予 W/Z [玻色子|boson]质量。势能 V(φ) = −μ²|φ|² + λ|φ|⁴ 的"帽沿"对应[自发对称破缺|ssb]后的真空简并。希格斯[玻色子|boson]（自旋为 0）是场在真空附近的量子化激发。',
+      en: 'The [Higgs field|higgs-mech] is a scalar field whose [vacuum expectation value|vev] v ≈ 246 GeV breaks the SU(2)×U(1) [gauge symmetry|gauge-symmetry] of the electroweak theory via the [Higgs mechanism|higgs-mech], giving masses to W/Z [bosons|boson]. The potential V(φ) = −μ²|φ|² + λ|φ|⁴ produces a degenerate "brim" after [spontaneous symmetry breaking|ssb]. The Higgs [boson|boson] (spin-0) is the quantum of oscillations about the vacuum.',
     },
     equation: 'V(φ) = −μ²|φ|² + λ|φ|⁴,  ⟨φ⟩ = v = √(μ²/2λ)',
     history: {
@@ -175,8 +175,8 @@ export const MODULE_DESCRIPTIONS: Record<string, ModuleDescription> = {
       en: 'A 2D lattice of spins — copper (+1) and dark blue (−1) — evolves via Metropolis Monte Carlo. Near the [Curie temperature|curie-temp] large-scale fluctuations and fractal domain boundaries emerge. Below Tc spins spontaneously align; above Tc they disorder into paramagnetism.',
     },
     physics: {
-      zh: '[伊辛模型|ising]用哈密顿量 H = −J ΣᵢⱼSᵢSⱼ 描述相邻自旋的铁磁耦合。Metropolis 算法按玻尔兹曼权重 e^{-ΔE/kT} 翻转自旋，模拟热平衡。二维模型在 Tc ≈ 2.269J/k 处发生连续[相变|phase-transition]，标度指数具有普适性，与实验中许多不同系统一致。',
-      en: 'The [Ising model|ising] Hamiltonian H = −J ΣᵢⱼSᵢSⱼ captures ferromagnetic coupling. Metropolis Monte Carlo flips spins with probability e^{−ΔE/kT}, sampling the thermal equilibrium ensemble. The 2D model has an exact [phase transition|phase-transition] at Tc ≈ 2.269 J/k with universal critical exponents shared by many real systems.',
+      zh: '[伊辛模型|ising]的[哈密顿量|hamiltonian] H = −J ΣᵢⱼSᵢSⱼ 描述相邻自旋的铁磁耦合。Metropolis 算法按[玻尔兹曼因子|boltzmann-factor] e^{-ΔE/kT} 接受翻转，模拟热平衡下的系综抽样。每次翻转改变系统[熵|entropy]的微观态数目。二维模型在 Tc ≈ 2.269J/k 处发生连续[相变|phase-transition]，标度指数具有普适性，与实验中许多不同系统一致。',
+      en: 'The [Ising model|ising] [Hamiltonian|hamiltonian] H = −J ΣᵢⱼSᵢSⱼ captures ferromagnetic coupling. Metropolis Monte Carlo accepts spin flips with [Boltzmann factor|boltzmann-factor] e^{−ΔE/kT}, sampling the thermal equilibrium ensemble. Each flip changes the [entropy|entropy] of the system by altering the microstate count. The 2D model has an exact [phase transition|phase-transition] at Tc ≈ 2.269 J/k with universal critical exponents shared by many real systems.',
     },
     equation: 'Tc = 2J / (k ln(1+√2)) ≈ 2.269 J/k',
     history: {
@@ -191,8 +191,8 @@ export const MODULE_DESCRIPTIONS: Record<string, ModuleDescription> = {
       en: 'Three mutually gravitating bodies move in a 2D plane, each leaving a coloured trail. Motion quickly becomes [chaotic|chaos] — orbits intertwine and cross until one body is ejected or an unstable binary forms.',
     },
     physics: {
-      zh: '三体问题没有一般解析解（庞加莱 1890 年证明）。引力势 V = −Σ Gmᵢmⱼ/rᵢⱼ 导出的方程组高度非线性，对初始条件极度敏感。只有少数特殊构型（如拉格朗日三角解）是稳定的周期轨道。[李雅普诺夫指数|lyapunov]为正，预测视界通常仅数个轨道周期。',
-      en: 'The three-body problem has no general closed-form solution (Poincaré, 1890). The equations derived from V = −Σ Gmᵢmⱼ/rᵢⱼ are strongly nonlinear and [chaotic|chaos]. Only special configurations — e.g. Lagrange\'s equilateral triangle — are stable. Positive [Lyapunov exponents|lyapunov] limit predictions to a few orbital periods.',
+      zh: '三体问题没有一般解析解（庞加莱 1890 年证明）。[引力势|grav-potential] V = −Σ Gmᵢmⱼ/rᵢⱼ 导出的方程组高度非线性，在[相空间|phase-space]中表现为复杂的混沌轨迹。只有少数特殊构型（如拉格朗日三角解）是稳定的周期轨道。正的[李雅普诺夫指数|lyapunov]使预测视界通常仅数个轨道周期。',
+      en: 'The three-body problem has no general closed-form solution (Poincaré, 1890). The equations derived from [gravitational potential|grav-potential] V = −Σ Gmᵢmⱼ/rᵢⱼ are strongly nonlinear; in [phase space|phase-space] they trace [chaotic|chaos] tangles. Only special configurations — e.g. Lagrange\'s equilateral triangle — are stable. Positive [Lyapunov exponents|lyapunov] limit predictions to a few orbital periods.',
     },
     equation: 'mᵢr̈ᵢ = Σⱼ≠ᵢ Gmᵢmⱼ(rⱼ−rᵢ)/|rⱼ−rᵢ|³',
     history: {
@@ -207,8 +207,8 @@ export const MODULE_DESCRIPTIONS: Record<string, ModuleDescription> = {
       en: 'Photon [geodesics|geodesic] and an accretion disk around a Schwarzschild black hole. Rays bend dramatically near the photon sphere (r = 1.5 rₛ). Adjust viewing angle to see the relativistic jet, Doppler brightening, and gravitational redshift.',
     },
     physics: {
-      zh: '史瓦西解是球对称不旋转质量的广义相对论精确解，度规为 ds² = −(1−rₛ/r)c²dt² + (1−rₛ/r)⁻¹dr² + r²dΩ²。在[史瓦西半径|schwarzschild-r] rₛ = 2GM/c² 处，时间分量为零——即[事件视界|event-horizon]。[光子球|geodesic]位于 r = 3GM/c²，光线在此绕圆轨道运行。',
-      en: 'The Schwarzschild metric is the exact GR solution for a non-rotating spherical mass: ds² = −(1−rₛ/r)c²dt² + dr²/(1−rₛ/r) + r²dΩ². At the [Schwarzschild radius|schwarzschild-r] rₛ = 2GM/c² (the [event horizon|event-horizon]) the time component vanishes. The photon sphere sits at r = 3GM/c².',
+      zh: '史瓦西解是球对称不旋转质量的广义相对论精确解，度规为 ds² = −(1−rₛ/r)c²dt² + (1−rₛ/r)⁻¹dr² + r²dΩ²。在[史瓦西半径|schwarzschild-r] rₛ = 2GM/c² 处，时间分量为零——即[事件视界|event-horizon]。引力[时间膨胀|time-dilation]使视界处钟走无限慢（外部观测者所见）。光子球位于 r = 3GM/c²，[测地线|geodesic]在此绕圆轨道运行。',
+      en: 'The Schwarzschild metric is the exact GR solution for a non-rotating spherical mass: ds² = −(1−rₛ/r)c²dt² + dr²/(1−rₛ/r) + r²dΩ². At the [Schwarzschild radius|schwarzschild-r] rₛ = 2GM/c² (the [event horizon|event-horizon]) the time component vanishes — gravitational [time dilation|time-dilation] makes a clock at the horizon tick infinitely slowly as seen from outside. The photon sphere at r = 3GM/c² is where circular [geodesics|geodesic] exist.',
     },
     equation: 'rₛ = 2GM/c²',
     history: {
@@ -226,8 +226,8 @@ export const MODULE_DESCRIPTIONS: Record<string, ModuleDescription> = {
       en: 'Real-time evolution of a particle [wavefunction|wavefunction] — Re(ψ), Im(ψ), and |ψ|² — impinging on a rectangular potential barrier. Even when the particle energy is below the barrier height, |ψ|² is nonzero on the far side: [quantum tunneling|tunneling] made visible.',
     },
     physics: {
-      zh: '在 E < V₀ 的势垒内，薛定谔方程的解为指数衰减形式 ψ ∝ e^{−κx}，κ = √(2m(V₀−E)/ℏ²)。透射系数近似为 T ≈ e^{−2κd}，其中 d 为势垒宽度。[WKB 近似|wkb]给出更精确的结果。隧穿是 α 衰变、扫描隧道显微镜（STM）、核聚变等现象的核心机制。',
-      en: 'Inside a classically forbidden barrier (E < V₀), the Schrödinger equation gives exponentially decaying solutions ψ ∝ e^{−κx} with κ = √(2m(V₀−E)/ħ²). Transmission probability T ≈ e^{−2κd}; the [WKB approximation|wkb] refines this. Tunneling underlies alpha decay, scanning tunneling microscopy (STM), and nuclear fusion.',
+      zh: '经典物理禁止 E < V₀ 的区域，但[不确定性原理|uncertainty] Δx·Δp ≥ ħ/2 使粒子能以[波函数|wavefunction]渗入势垒——指数衰减解 ψ ∝ e^{−κx}，κ = √(2m(V₀−E)/ℏ²)。透射系数近似为 T ≈ e^{−2κd}，[WKB 近似|wkb]给出更精确的结果。隧穿是 α 衰变、扫描隧道显微镜（STM）的核心机制。',
+      en: 'Classical physics forbids E < V₀ regions, but the [uncertainty principle|uncertainty] Δx·Δp ≥ ħ/2 allows the [wavefunction|wavefunction] to penetrate — the solution decays as ψ ∝ e^{−κx} with κ = √(2m(V₀−E)/ħ²). Transmission probability T ≈ e^{−2κd}; the [WKB approximation|wkb] refines this. Tunneling underlies alpha decay and scanning tunneling microscopy (STM).',
     },
     equation: 'T ≈ exp(−2d√(2m(V₀−E)/ħ²))',
     history: {
@@ -258,8 +258,8 @@ export const MODULE_DESCRIPTIONS: Record<string, ModuleDescription> = {
       en: 'Spectral energy density curves at different temperatures — showing peak wavelength shift ([Wien\'s law|wien]) and the contrast between the classical Rayleigh–Jeans curve (diverging at high frequency: the [ultraviolet catastrophe|uv-catastrophe]) and Planck\'s quantum formula which matches experiment perfectly.',
     },
     physics: {
-      zh: '[普朗克定律|planck-law] B(ν,T) = 2hν³/c² · 1/(e^{hν/kT}−1) 假设电磁场能量以离散量子 E = hν 方式交换，从而避免高频发散。[维恩位移定律|wien] λ_max = b/T 给出峰值波长，斯特藩–玻尔兹曼定律 P = σT⁴ 给出总辐射功率。恒星颜色、宇宙微波背景、激光腔等都遵循[黑体|blackbody]辐射规律。',
-      en: '[Planck\'s law|planck-law] B(ν,T) = 2hν³/c² / (e^{hν/kT}−1) avoids the [ultraviolet catastrophe|uv-catastrophe] by quantising field energy in units E = hν. [Wien\'s displacement law|wien] λ_max = b/T locates the peak; Stefan–Boltzmann P = σT⁴ gives total power. Stellar colours, the CMB, and laser cavities all follow [blackbody|blackbody] radiation.',
+      zh: '[普朗克定律|planck-law] B(ν,T) = 2hν³/c² · 1/(e^{hν/kT}−1) 将电磁场视为[光子|photon]气体，由[配分函数|partition-function]推导，假设每个模式的能量以 E = hν 量子化，从而避免高频发散。[维恩位移定律|wien] λ_max = b/T 给出峰值波长，斯特藩–玻尔兹曼定律 P = σT⁴ 给出总辐射功率。恒星颜色、宇宙微波背景、激光腔等都遵循[黑体|blackbody]辐射规律。',
+      en: '[Planck\'s law|planck-law] B(ν,T) = 2hν³/c² / (e^{hν/kT}−1) treats the electromagnetic field as a gas of [photons|photon], derived from the [partition function|partition-function] by quantising each mode in units E = hν — avoiding the [ultraviolet catastrophe|uv-catastrophe]. [Wien\'s displacement law|wien] λ_max = b/T locates the peak; Stefan–Boltzmann P = σT⁴ gives total power. Stellar colours, the CMB, and laser cavities all follow [blackbody|blackbody] radiation.',
     },
     equation: 'B(ν,T) = 2hν³/c² · 1/(e^{hν/kT} − 1)',
     history: {
@@ -277,8 +277,8 @@ export const MODULE_DESCRIPTIONS: Record<string, ModuleDescription> = {
       en: 'A Minkowski spacetime diagram showing worldlines, simultaneity surfaces, and [light cones|light-cone] in different inertial frames. Drag the velocity slider to switch frames in real time and watch the [Lorentz transformation|lorentz] shear the axes — simultaneity is relative.',
     },
     physics: {
-      zh: '闵可夫斯基时空将时间和空间统一为四维连续体，时空间隔 ds² = c²dt² − dx² 是洛伦兹不变量。[光锥|light-cone]将时空划分为可因果联系的类时区域和无法因果联系的类空区域。[固有时|proper-time]由沿世界线的积分 τ = ∫√(1−v²/c²)dt 给出，是运动时钟测量的时间。',
-      en: 'Minkowski spacetime unifies time and space into a 4D continuum; the interval ds² = c²dt² − dx² is Lorentz-invariant. [Light cones|light-cone] divide spacetime into causally connected (timelike) and causally disconnected (spacelike) regions. [Proper time|proper-time] τ = ∫√(1−v²/c²)dt is what a moving clock actually measures.',
+      zh: '闵可夫斯基时空将时间和空间统一为四维连续体，时空间隔 ds² = c²dt² − dx² 是[洛伦兹变换|lorentz]不变量。[光锥|light-cone]将时空划分为可因果联系的类时区域和无法因果联系的类空区域。[固有时|proper-time]τ = ∫√(1−v²/c²)dt 是运动时钟测量的时间，[时间膨胀|time-dilation]在图中表现为斜轴上间距的缩短。',
+      en: 'Minkowski spacetime unifies time and space into a 4D continuum; the interval ds² = c²dt² − dx² is invariant under [Lorentz transformations|lorentz]. [Light cones|light-cone] separate causally connected (timelike) from disconnected (spacelike) regions. [Proper time|proper-time] τ = ∫√(1−v²/c²)dt is what a moving clock measures — [time dilation|time-dilation] is visible as compressed tick-marks on the boosted worldline.',
     },
     equation: 'ds² = c²dτ² = c²dt² − dx² − dy² − dz²',
     history: {
@@ -293,8 +293,8 @@ export const MODULE_DESCRIPTIONS: Record<string, ModuleDescription> = {
       en: 'Light from background galaxies bends around a foreground mass, creating arcs, multiple images, or a perfect [Einstein ring|einstein-ring] when aligned. Adjust the lens mass and source position to explore the transition from weak lensing (mild distortion) to strong lensing (arcs and rings).',
     },
     physics: {
-      zh: '光沿弯曲时空中的[测地线|geodesic]传播，经过质量 M 时偏折角为 α = 4GM/c²b，其中 b 为冲击参数。这是牛顿预言值的两倍，是广义相对论的关键预言之一。[爱因斯坦环|einstein-ring]的角半径 θ_E = √(4GMD_ls/c²D_lD_s) 可用于测量透镜天体质量，包括暗物质晕。',
-      en: 'Light follows [geodesics|geodesic] in curved spacetime; passing a mass M at impact parameter b it deflects by α = 4GM/c²b — twice the Newtonian prediction, a key GR test. The [Einstein ring|einstein-ring] radius θ_E = √(4GM D_ls / c² D_l D_s) is used to weigh galaxy clusters and dark matter halos.',
+      zh: '[引力透镜|grav-lensing]是光沿弯曲时空中的[测地线|geodesic]传播的直接结果，经过质量 M 时偏折角 α = 4GM/c²b（牛顿值的两倍）。[爱因斯坦环|einstein-ring]半径 θ_E 可用于测量透镜天体（包括[暗物质|dark-matter]晕）的质量。引力[红移|redshift]——光子爬出引力井时损失能量——也在同一框架内统一。',
+      en: '[Gravitational lensing|grav-lensing] is the direct consequence of light following [geodesics|geodesic] in curved spacetime; passing mass M it deflects by α = 4GM/c²b — twice the Newtonian value. The [Einstein ring|einstein-ring] radius θ_E weighs galaxy clusters and [dark matter|dark-matter] halos. Gravitational [redshift|redshift] — photons losing energy escaping a gravity well — is unified in the same GR framework.',
     },
     equation: 'α = 4GM/c²b  (GR),  α = 2GM/c²b  (Newtonian)',
     history: {
@@ -309,8 +309,8 @@ export const MODULE_DESCRIPTIONS: Record<string, ModuleDescription> = {
       en: 'Visualisation of measurement correlations for two [entangled|entanglement] particles in different measurement bases. Rotate the measurement angles to witness [Bell inequality|bell-inequality] violation: quantum correlations exceed the classical local-hidden-variable bound of 2, reaching the quantum Tsirelson bound 2√2.',
     },
     physics: {
-      zh: '纠缠态（如贝尔态 |Φ⁺⟩ = (|00⟩+|11⟩)/√2）不可写成两粒子态的直积。对粒子 A 的测量瞬时影响粒子 B 的结果概率，无论距离多远，但不可用于超光速通信。CHSH 不等式 |⟨AB⟩−⟨AB′⟩+⟨A′B⟩+⟨A′B′⟩| ≤ 2（经典）vs. ≤ 2√2（量子）检验了局域实在论。',
-      en: 'An [entangled|entanglement] state like |Φ⁺⟩ = (|00⟩+|11⟩)/√2 cannot be written as a product of individual states. Measuring particle A instantly constrains B\'s outcome probabilities regardless of distance, yet no superluminal signalling is possible. The CHSH form of [Bell\'s inequality|bell-inequality] distinguishes quantum (≤ 2√2) from classical local (≤ 2) correlations.',
+      zh: '纠缠态（如[自旋|spin]贝尔态 |Φ⁺⟩ = (|↑↓⟩−|↓↑⟩)/√2）不可写成两粒子态的直积，是[叠加|superposition]的多体推广。对粒子 A 测量[自旋|spin]会瞬时影响粒子 B 的结果概率，无论距离多远，但不可用于超光速通信。CHSH 不等式 |⟨AB⟩−⟨AB′⟩+⟨A′B⟩+⟨A′B′⟩| ≤ 2（经典）vs. ≤ 2√2（量子）检验了局域实在论。',
+      en: 'An [entangled|entanglement] [spin|spin] state like |Φ⁺⟩ = (|↑↓⟩−|↓↑⟩)/√2 cannot be written as a product of individual states — it is [superposition|superposition] extended to multiple particles. Measuring A\'s [spin|spin] instantly constrains B\'s outcome probabilities at any distance, yet no superluminal signalling is possible. The CHSH form of [Bell\'s inequality|bell-inequality] distinguishes quantum (≤ 2√2) from classical local (≤ 2) correlations.',
     },
     equation: '|⟨AB⟩ − ⟨AB′⟩ + ⟨A′B⟩ + ⟨A′B′⟩| ≤ 2√2  (quantum)',
     history: {
@@ -328,8 +328,8 @@ export const MODULE_DESCRIPTIONS: Record<string, ModuleDescription> = {
       en: 'Hundreds of gas molecules (colour-coded blue→red by speed) elastically collide with a heavy pollen grain (copper sphere). The grain traces an erratic random walk. Raise temperature to intensify molecular motion; hide gas molecules to see the "invisible" forces driving the grain.',
     },
     physics: {
-      zh: '花粉颗粒受到周围气体分子的随机弹性碰撞，质量远大于分子（质量比 ~ r²），故运动缓慢但连续改向。分子速率分布由麦克斯韦–玻尔兹曼分布描述，均方根速率 v_rms = √(2kT/m)。布朗运动的均方位移 ⟨r²⟩ = 4Dt 随时间线性增长，扩散系数 D = kT/(6πηr)。',
-      en: 'The pollen grain is buffeted by random elastic collisions with gas molecules (mass ratio ≈ r²), moving slowly but continuously redirected. Molecular speeds follow the Maxwell–Boltzmann distribution with v_rms = √(2kT/m). The mean squared displacement ⟨r²⟩ = 4Dt grows linearly in time, with diffusion coefficient D = kT/(6πηr).',
+      zh: '花粉颗粒受到周围气体分子的随机弹性碰撞。分子[平均自由程|mean-free-path]远小于颗粒尺寸，使碰撞呈现连续随机激励的特征。速率分布由麦克斯韦–[玻尔兹曼因子|boltzmann-factor]统计描述，均方根速率 v_rms = √(2kT/m)。布朗运动是[扩散|diffusion]的微观起源，均方位移 ⟨r²⟩ = 4Dt 随时间线性增长，[扩散|diffusion]系数 D = kT/(6πηr)（斯托克斯–爱因斯坦关系）。',
+      en: 'The pollen grain is buffeted by random elastic collisions with gas molecules whose [mean free path|mean-free-path] ≪ grain size, making the kicks appear as a continuous random force. Molecular speeds follow the Maxwell–[Boltzmann factor|boltzmann-factor] distribution with v_rms = √(2kT/m). Brownian motion is the microscopic origin of [diffusion|diffusion]: ⟨r²⟩ = 4Dt grows linearly, with [diffusion|diffusion] coefficient D = kT/(6πηr) (Stokes–Einstein relation).',
     },
     equation: '⟨r²⟩ = 4Dt,  D = kT / (6πηr)',
     history: {
@@ -344,8 +344,8 @@ export const MODULE_DESCRIPTIONS: Record<string, ModuleDescription> = {
       en: 'Real-time evolution of a 1D [wavefunction|wavefunction]: |ψ|² (amber fill), Re(ψ) (blue), Im(ψ) (teal). A Gaussian wave packet propagates rightward, splitting into transmitted and reflected waves at the barrier. Switch potential types (barrier/well/double/free) to observe [quantum tunneling|tunneling] and interference.',
     },
     physics: {
-      zh: '一维含时薛定谔方程 iħ ∂ψ/∂t = (−ħ²/2m ∂²/∂x² + V(x))ψ 用 Askar–Cakmak 蛙跳格式数值求解（原子单位 ħ=m=1，N=512 格点）。透射率 T 随势垒高度 V₀ 与粒子动能 E=k₀²/2 的比值指数变化——V₀ < E 时主要透射，V₀ > E 时[量子隧穿|tunneling]主导。双势垒可产生共振透射。',
-      en: 'The 1D TDSE iħ ∂ψ/∂t = (−ħ²/2m ∂²/∂x² + V)ψ is solved numerically (Askar–Cakmak leapfrog, atomic units, N=512). Transmission T varies exponentially with the ratio of barrier height V₀ to kinetic energy E = k₀²/2. Below-barrier [tunneling|tunneling] dominates for V₀ > E; the double-barrier geometry can produce resonant (near-unity) transmission.',
+      zh: '一维含时薛定谔方程 iħ ∂ψ/∂t = [Ĥ|hamiltonian]ψ = (−ħ²/2m ∂²/∂x² + V(x))ψ 用 Askar–Cakmak 蛙跳格式数值求解（原子单位，N=512 格点）。初始高斯波包是动量本征态的[傅里叶叠加|fourier-transform]，构成[叠加态|superposition]。透射率 T 随势垒高度 V₀ 与粒子动能 E=k₀²/2 的比值指数变化——V₀ > E 时[量子隧穿|tunneling]主导。',
+      en: 'The 1D TDSE iħ ∂ψ/∂t = [Ĥ|hamiltonian]ψ = (−ħ²/2m ∂²/∂x² + V)ψ is solved numerically (Askar–Cakmak leapfrog, atomic units, N=512). The initial Gaussian is a [Fourier superposition|fourier-transform] of momentum eigenstates — a [superposition|superposition] state. Transmission T varies exponentially with V₀/E; below-barrier [tunneling|tunneling] dominates when V₀ > E.',
     },
     equation: 'iħ ∂ψ/∂t = −(ħ²/2m) ∂²ψ/∂x² + V(x)ψ',
     history: {
@@ -360,8 +360,8 @@ export const MODULE_DESCRIPTIONS: Record<string, ModuleDescription> = {
       en: 'The co-rotating frame of the Circular Restricted Three-Body Problem: the effective potential is shown as a heatmap (deep blue→copper = low→high), with L1–L5 marked red (unstable) or green (stable). Test particles near L1–L3 escape quickly; particles near L4/L5 (when μ < 0.0385) execute stable tadpole orbits indefinitely.',
     },
     physics: {
-      zh: '有效势 Φ_eff = −m₁/r₁ − m₂/r₂ − (x²+y²)/2 结合了引力势和离心势。L1、L2、L3 是 x 轴上的鞍点（x 方向最小值，y 方向最大值），总是不稳定。L4/L5 是精确等边三角形顶点，对质量比 μ < 0.0385 时为势能局域极大值，科里奥利力使轨道稳定，特洛伊小行星群（木星 L4/L5）正是其实例。',
-      en: 'The effective potential Φ_eff = −m₁/r₁ − m₂/r₂ − (x²+y²)/2 combines gravity and centrifugal terms. L1/L2/L3 are saddle points on the x-axis (always unstable). L4/L5 are at exact equilateral triangle vertices; for μ < 0.0385 they are local potential maxima, stabilised by Coriolis forces. Jupiter\'s Trojan asteroids inhabit these points.',
+      zh: '[有效势|effective-potential] Φ_eff = −m₁/r₁ − m₂/r₂ − (x²+y²)/2 结合了引力势和离心势。L1、L2、L3 是 x 轴上的鞍点，总是不稳定。L4/L5 是精确等边三角形顶点，对质量比 μ < 0.0385 时为势能局域极大值，[科里奥利力|coriolis]使轨道稳定，特洛伊小行星群（木星 L4/L5）正是其实例。',
+      en: 'The [effective potential|effective-potential] Φ_eff = −m₁/r₁ − m₂/r₂ − (x²+y²)/2 combines gravity and centrifugal terms. L1/L2/L3 are saddle points on the x-axis (always unstable). L4/L5 are at exact equilateral triangle vertices; for μ < 0.0385 they are local potential maxima, stabilised by [Coriolis forces|coriolis]. Jupiter\'s Trojan asteroids inhabit these points.',
     },
     equation: 'μ_crit = (1 − √(23/27))/2 ≈ 0.03852',
     history: {
