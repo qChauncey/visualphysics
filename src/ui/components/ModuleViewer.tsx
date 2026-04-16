@@ -12,6 +12,95 @@ import { useRef, useState, useEffect, useCallback } from 'react'
 import type { PhysicsModule, Params, ControlDefinition } from '@/types/physics'
 import { useModuleRunner } from '@/core/renderer/useModuleRunner'
 import { useLang } from '@/core/i18n'
+import { MODULE_DESCRIPTIONS } from '@/core/module-descriptions'
+import { GLOSSARY_MAP, type GlossaryTerm } from '@/core/glossary'
+
+// ── Rich-text helpers ─────────────────────────────────────────────────────────
+
+type Segment = { type: 'text'; text: string } | { type: 'term'; display: string; id: string }
+
+function parseRichText(text: string): Segment[] {
+  const segs: Segment[] = []
+  const re = /\[([^\]|]+)\|([^\]]+)\]/g
+  let last = 0; let m: RegExpExecArray | null
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) segs.push({ type: 'text', text: text.slice(last, m.index) })
+    segs.push({ type: 'term', display: m[1], id: m[2] })
+    last = m.index + m[0].length
+  }
+  if (last < text.length) segs.push({ type: 'text', text: text.slice(last) })
+  return segs
+}
+
+function RichText({ text, onTerm }: { text: string; onTerm: (id: string) => void }) {
+  return (
+    <>
+      {parseRichText(text).map((seg, i) =>
+        seg.type === 'text' ? (
+          <span key={i}>{seg.text}</span>
+        ) : (
+          <button
+            key={i}
+            onClick={(e) => { e.stopPropagation(); onTerm(seg.id) }}
+            className="text-[#c8955a]/80 underline decoration-dotted underline-offset-2 hover:text-[#c8955a] transition-colors duration-150"
+          >
+            {seg.display}
+          </button>
+        )
+      )}
+    </>
+  )
+}
+
+function GlossaryCard({ term, lang, onClose }: { term: GlossaryTerm; lang: string; onClose: () => void }) {
+  return (
+    <div className="bg-[#0a0a18] border border-[#c8955a]/22 p-4 mb-4">
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <div>
+          <span className="font-mono text-[10px] text-[#c8955a] tracking-[0.12em]">
+            {lang === 'zh' ? term.zh : term.en}
+          </span>
+          <span className="font-mono text-[9px] text-[#f0ede8]/22 ml-2">
+            {lang === 'zh' ? term.en : term.zh}
+          </span>
+        </div>
+        <button onClick={onClose} className="text-[#f0ede8]/22 hover:text-[#f0ede8]/55 text-xs leading-none flex-shrink-0">✕</button>
+      </div>
+      <p className="text-[#f0ede8]/55 text-[11px] leading-relaxed mb-2">
+        {lang === 'zh' ? term.defZh : term.defEn}
+      </p>
+      {term.formula && (
+        <p className="font-mono text-[10px] text-[#c8955a]/65 bg-[#c8955a]/06 px-3 py-2 mb-2">
+          {term.formula}
+        </p>
+      )}
+      <a
+        href={`https://en.wikipedia.org/wiki/${term.wikiEn}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={(e) => e.stopPropagation()}
+        className="font-mono text-[8px] tracking-[0.15em] text-[#c8955a]/38 hover:text-[#c8955a]/70 uppercase transition-colors duration-150"
+      >
+        Wikipedia →
+      </a>
+    </div>
+  )
+}
+
+// ── Section helper ────────────────────────────────────────────────────────────
+
+function InfoSection({ label, text, onTerm }: { label: string; text: string; onTerm: (id: string) => void }) {
+  return (
+    <div className="mb-5">
+      <p className="font-mono text-[7px] tracking-[0.22em] text-[#f0ede8]/22 uppercase mb-2">{label}</p>
+      <p className="text-[#f0ede8]/58 text-[12px] leading-relaxed">
+        <RichText text={text} onTerm={onTerm} />
+      </p>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface Props { mod: PhysicsModule }
 
@@ -30,7 +119,10 @@ export default function ModuleViewer({ mod }: Props) {
   const [controlsOpen, setControlsOpen]     = useState(false)
   const [controlsLocked, setControlsLocked] = useState(false)
   const [infoOpen, setInfoOpen]             = useState(false)
+  const [activeTerm, setActiveTerm]         = useState<string | null>(null)
   const { lang } = useLang()
+
+  const closeInfo = useCallback(() => { setInfoOpen(false); setActiveTerm(null) }, [])
 
   // ── View state: pan / zoom / mouse ─────────────────────────────────────────
   const viewRef       = useRef<Params>({ _panX: 0, _panY: 0, _zoom: 1, _mouseX: -1, _mouseY: -1, _dragging: false, _scrollAccum: 0 })
@@ -292,54 +384,101 @@ export default function ModuleViewer({ mod }: Props) {
       </button>
 
       {/* ── Info / Explanation popup ── */}
-      {infoOpen && (
-        <div
-          className="absolute inset-0 z-20 flex items-center justify-center bg-[#020208]/60 backdrop-blur-sm"
-          onClick={() => setInfoOpen(false)}
-        >
+      {infoOpen && (() => {
+        const desc = MODULE_DESCRIPTIONS[mod.id]
+        const handleTerm = (id: string) => {
+          if (!GLOSSARY_MAP[id]) return
+          setActiveTerm((prev) => (prev === id ? null : id))
+        }
+        return (
           <div
-            className="bg-[#07070f]/97 border border-[#f0ede8]/10 p-6 max-w-md w-full mx-4 shadow-2xl relative"
-            onClick={(e) => e.stopPropagation()}
+            className="absolute inset-0 z-20 flex items-center justify-center bg-[#020208]/60 backdrop-blur-sm"
+            onClick={closeInfo}
           >
-            <button
-              onClick={() => setInfoOpen(false)}
-              className="absolute top-3 right-4 text-[#f0ede8]/30 hover:text-[#f0ede8]/65 text-lg leading-none transition-colors"
-            >✕</button>
+            <div
+              className="bg-[#07070f]/97 border border-[#f0ede8]/10 max-w-lg w-full mx-4 shadow-2xl relative flex flex-col max-h-[85vh]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Close */}
+              <button
+                onClick={closeInfo}
+                className="absolute top-3 right-4 z-10 text-[#f0ede8]/30 hover:text-[#f0ede8]/65 text-lg leading-none transition-colors"
+              >✕</button>
 
-            {/* Category tag */}
-            <p className="font-mono text-[7px] tracking-[0.22em] text-[#c8955a]/55 uppercase mb-3">
-              {mod.metadata.theory?.join(' · ')}
-            </p>
+              {/* Scrollable body */}
+              <div className="overflow-y-auto p-6 flex-1">
 
-            {/* Title */}
-            <h2 className="font-display font-light text-[22px] leading-tight text-[#f0ede8] mb-1">
-              {lang === 'zh' ? mod.metadata.title : mod.metadata.titleEn}
-            </h2>
-            <p className="font-mono text-[8px] tracking-[0.14em] text-[#c8955a]/45 mb-4 uppercase">
-              {lang === 'zh' ? mod.metadata.titleEn : mod.metadata.title}
-            </p>
+                {/* Theory tags */}
+                <p className="font-mono text-[7px] tracking-[0.22em] text-[#c8955a]/55 uppercase mb-3">
+                  {mod.metadata.theory?.join(' · ')}
+                </p>
 
-            {/* Description */}
-            <p className="text-[#f0ede8]/60 text-[12px] leading-relaxed mb-5">
-              {lang === 'zh'
-                ? mod.metadata.description
-                : (mod.metadata.descriptionEn ?? mod.metadata.description)}
-            </p>
+                {/* Title */}
+                <h2 className="font-display font-light text-[22px] leading-tight text-[#f0ede8] mb-1">
+                  {lang === 'zh' ? mod.metadata.title : mod.metadata.titleEn}
+                </h2>
+                <p className="font-mono text-[8px] tracking-[0.14em] text-[#c8955a]/45 mb-5 uppercase">
+                  {lang === 'zh' ? mod.metadata.titleEn : mod.metadata.title}
+                </p>
 
-            {/* Interaction hint */}
-            <div className="border-t border-[#f0ede8]/7 pt-4">
-              <p className="font-mono text-[7px] tracking-[0.18em] text-[#f0ede8]/22 uppercase mb-2">
-                {lang === 'zh' ? '互动方式' : 'How to interact'}
-              </p>
-              <p className="font-mono text-[9px] text-[#f0ede8]/35 leading-relaxed">
-                {lang === 'zh'
-                  ? '拖曳旋转视角 · 滚轮缩放 · 双击重置 · 底部控制面板调整参数'
-                  : 'Drag to rotate · Scroll to zoom · Double-click to reset · Hover bottom for controls'}
-              </p>
+                {/* Glossary card (shown when a term link is clicked) */}
+                {activeTerm && GLOSSARY_MAP[activeTerm] && (
+                  <GlossaryCard
+                    term={GLOSSARY_MAP[activeTerm]}
+                    lang={lang}
+                    onClose={() => setActiveTerm(null)}
+                  />
+                )}
+
+                {/* Structured sections */}
+                {desc ? (
+                  <>
+                    <InfoSection
+                      label={lang === 'zh' ? '你看到了什么' : 'What You See'}
+                      text={lang === 'zh' ? desc.whatYouSee.zh : desc.whatYouSee.en}
+                      onTerm={handleTerm}
+                    />
+                    <InfoSection
+                      label={lang === 'zh' ? '背后的物理' : 'The Physics'}
+                      text={lang === 'zh' ? desc.physics.zh : desc.physics.en}
+                      onTerm={handleTerm}
+                    />
+                    {desc.equation && (
+                      <div className="font-mono text-[11px] text-[#c8955a]/70 bg-[#c8955a]/05 border border-[#c8955a]/14 px-4 py-3 mb-5 break-all">
+                        {desc.equation}
+                      </div>
+                    )}
+                    <InfoSection
+                      label={lang === 'zh' ? '历史背景' : 'Historical Context'}
+                      text={lang === 'zh' ? desc.history.zh : desc.history.en}
+                      onTerm={handleTerm}
+                    />
+                  </>
+                ) : (
+                  /* Fallback for modules without structured descriptions */
+                  <p className="text-[#f0ede8]/58 text-[12px] leading-relaxed mb-5">
+                    {lang === 'zh'
+                      ? mod.metadata.description
+                      : (mod.metadata.descriptionEn ?? mod.metadata.description)}
+                  </p>
+                )}
+
+                {/* Interaction hint */}
+                <div className="border-t border-[#f0ede8]/7 pt-4">
+                  <p className="font-mono text-[7px] tracking-[0.18em] text-[#f0ede8]/22 uppercase mb-2">
+                    {lang === 'zh' ? '互动方式' : 'How to interact'}
+                  </p>
+                  <p className="font-mono text-[9px] text-[#f0ede8]/35 leading-relaxed">
+                    {lang === 'zh'
+                      ? '拖曳旋转视角 · 滚轮缩放 · 双击重置 · 底部控制面板调整参数'
+                      : 'Drag to rotate · Scroll to zoom · Double-click to reset · Hover bottom for controls'}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* ── Controls — hover-triggered bottom panel ── */}
       {controls.length > 0 && (
