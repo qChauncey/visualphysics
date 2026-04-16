@@ -22,10 +22,19 @@ export default function PageTracker() {
       }
     } catch { /* SSR guard */ }
 
+    let sessionId = ''
+    try {
+      sessionId = sessionStorage.getItem('_sid') ?? ''
+      if (!sessionId) {
+        sessionId = crypto.randomUUID()
+        sessionStorage.setItem('_sid', sessionId)
+      }
+    } catch { /* SSR guard */ }
+
     fetch('/api/track', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ path: pathname, module, lang }),
+      body:    JSON.stringify({ path: pathname, module, lang, sessionId }),
     }).catch(() => { /* fire-and-forget */ })
   }, [pathname])
 
