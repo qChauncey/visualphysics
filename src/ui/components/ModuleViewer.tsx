@@ -29,6 +29,7 @@ export default function ModuleViewer({ mod }: Props) {
   const [params, setParams]       = useState<Params>(() => buildDefaultParams(controls))
   const [controlsOpen, setControlsOpen]     = useState(false)
   const [controlsLocked, setControlsLocked] = useState(false)
+  const [infoOpen, setInfoOpen]             = useState(false)
   const { lang } = useLang()
 
   // ── View state: pan / zoom / mouse ─────────────────────────────────────────
@@ -57,7 +58,7 @@ export default function ModuleViewer({ mod }: Props) {
   closeControlsFnRef.current = useCallback(() => {
     if (controlsLockedRef.current) return
     if (controlsHideTimer.current) clearTimeout(controlsHideTimer.current)
-    controlsHideTimer.current = setTimeout(() => setControlsOpen(false), 500)
+    controlsHideTimer.current = setTimeout(() => setControlsOpen(false), 700)
   }, [])
 
   // Clean up timer on unmount
@@ -95,10 +96,12 @@ export default function ModuleViewer({ mod }: Props) {
       viewRef.current._mouseX = x
       viewRef.current._mouseY = y
 
-      // Show controls when near bottom 20% of canvas
-      if (relY > 0.80) {
+      // Show controls when near bottom 22% of canvas.
+      // Hysteresis: only close when clearly above the zone (< 0.68) to prevent
+      // flickering when moving a slider while hovering near the boundary.
+      if (relY > 0.78) {
         openControlsFnRef.current()
-      } else {
+      } else if (relY < 0.68) {
         closeControlsFnRef.current()
       }
 
@@ -279,6 +282,64 @@ export default function ModuleViewer({ mod }: Props) {
       >
         {running ? '⏸ Pause' : '▶ Resume'}
       </button>
+
+      {/* ── Info button — top-left corner ── */}
+      <button
+        onClick={() => setInfoOpen(true)}
+        className="absolute top-4 left-4 z-10 w-6 h-6 flex items-center justify-center font-mono text-[9px] text-[#f0ede8]/28 hover:text-[#f0ede8]/65 border border-[#f0ede8]/12 hover:border-[#f0ede8]/30 transition-colors duration-300"
+      >
+        ?
+      </button>
+
+      {/* ── Info / Explanation popup ── */}
+      {infoOpen && (
+        <div
+          className="absolute inset-0 z-20 flex items-center justify-center bg-[#020208]/60 backdrop-blur-sm"
+          onClick={() => setInfoOpen(false)}
+        >
+          <div
+            className="bg-[#07070f]/97 border border-[#f0ede8]/10 p-6 max-w-md w-full mx-4 shadow-2xl relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setInfoOpen(false)}
+              className="absolute top-3 right-4 text-[#f0ede8]/30 hover:text-[#f0ede8]/65 text-lg leading-none transition-colors"
+            >✕</button>
+
+            {/* Category tag */}
+            <p className="font-mono text-[7px] tracking-[0.22em] text-[#c8955a]/55 uppercase mb-3">
+              {mod.metadata.theory?.join(' · ')}
+            </p>
+
+            {/* Title */}
+            <h2 className="font-display font-light text-[22px] leading-tight text-[#f0ede8] mb-1">
+              {lang === 'zh' ? mod.metadata.title : mod.metadata.titleEn}
+            </h2>
+            <p className="font-mono text-[8px] tracking-[0.14em] text-[#c8955a]/45 mb-4 uppercase">
+              {lang === 'zh' ? mod.metadata.titleEn : mod.metadata.title}
+            </p>
+
+            {/* Description */}
+            <p className="text-[#f0ede8]/60 text-[12px] leading-relaxed mb-5">
+              {lang === 'zh'
+                ? mod.metadata.description
+                : (mod.metadata.descriptionEn ?? mod.metadata.description)}
+            </p>
+
+            {/* Interaction hint */}
+            <div className="border-t border-[#f0ede8]/7 pt-4">
+              <p className="font-mono text-[7px] tracking-[0.18em] text-[#f0ede8]/22 uppercase mb-2">
+                {lang === 'zh' ? '互动方式' : 'How to interact'}
+              </p>
+              <p className="font-mono text-[9px] text-[#f0ede8]/35 leading-relaxed">
+                {lang === 'zh'
+                  ? '拖曳旋转视角 · 滚轮缩放 · 双击重置 · 底部控制面板调整参数'
+                  : 'Drag to rotate · Scroll to zoom · Double-click to reset · Hover bottom for controls'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Controls — hover-triggered bottom panel ── */}
       {controls.length > 0 && (
