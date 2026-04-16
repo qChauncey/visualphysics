@@ -55,3 +55,4 @@ registerModule('blackbody-radiation', () => import('@/modules/blackbody-radiatio
 registerModule('minkowski-diagram',   () => import('@/modules/minkowski-diagram'))
 registerModule('gravitational-lensing', () => import('@/modules/gravitational-lensing'))
 registerModule('quantum-entanglement',  () => import('@/modules/quantum-entanglement'))
+registerModule('brownian-motion',       () => import('@/modules/brownian-motion'))

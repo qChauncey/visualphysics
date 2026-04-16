@@ -12,6 +12,7 @@ const CATEGORIES = [
     modules: [
       { id: 'double-pendulum',       num: '01', zh: '双摆混沌',        en: 'Double Pendulum',      ready: true },
       { id: 'three-body',            num: '11', zh: '三体问题',        en: 'Three-Body Problem',   ready: true },
+      { id: 'brownian-motion',       num: '19', zh: '布朗运动',        en: 'Brownian Motion',      ready: true },
     ],
   },
   {
