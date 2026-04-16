@@ -18,12 +18,13 @@ const CATEGORIES = [
   {
     key: 'catQuantum' as const,
     modules: [
-      { id: 'hydrogen-orbital',      num: '02', zh: '氢原子轨道',      en: 'Hydrogen Orbitals',    ready: true },
-      { id: 'double-slit',           num: '04', zh: '双缝实验',        en: 'Double Slit',          ready: true },
-      { id: 'ising-model',           num: '10', zh: '伊辛模型',        en: 'Ising Model',          ready: true },
-      { id: 'blackbody-radiation',   num: '14', zh: '黑体辐射',        en: 'Blackbody Radiation',  ready: true },
-      { id: 'quantum-tunneling',     num: '13', zh: '量子隧穿',        en: 'Quantum Tunneling',    ready: true },
-      { id: 'quantum-entanglement',  num: '18', zh: '量子纠缠',        en: 'Quantum Entanglement', ready: true },
+      { id: 'hydrogen-orbital',         num: '02', zh: '氢原子轨道',      en: 'Hydrogen Orbitals',      ready: true },
+      { id: 'double-slit',            num: '04', zh: '双缝实验',        en: 'Double Slit',            ready: true },
+      { id: 'ising-model',            num: '10', zh: '伊辛模型',        en: 'Ising Model',            ready: true },
+      { id: 'blackbody-radiation',    num: '14', zh: '黑体辐射',        en: 'Blackbody Radiation',    ready: true },
+      { id: 'quantum-tunneling',      num: '13', zh: '量子隧穿',        en: 'Quantum Tunneling',      ready: true },
+      { id: 'quantum-entanglement',   num: '18', zh: '量子纠缠',        en: 'Quantum Entanglement',   ready: true },
+      { id: 'wavefunction-evolution', num: '20', zh: '波函数演化',      en: 'Wavefunction Evolution', ready: true },
     ],
   },
   {
