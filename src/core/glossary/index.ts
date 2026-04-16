@@ -1,0 +1,490 @@
+// ─────────────────────────────────────────────
+//  Physics Glossary
+//  ~45 terms covering all 21 modules
+//  Format: id, zh (Chinese name), en (English name),
+//          defZh (2-3 sentence Chinese def), defEn (2-3 sentence English def),
+//          formula? (Unicode), wikiEn (Wikipedia slug), wikiZh?
+// ─────────────────────────────────────────────
+
+export interface GlossaryTerm {
+  id:       string
+  zh:       string
+  en:       string
+  defZh:    string
+  defEn:    string
+  formula?: string
+  wikiEn:   string
+  wikiZh?:  string
+}
+
+export const GLOSSARY: GlossaryTerm[] = [
+
+  // ── Batch 1: Classical Mechanics ──────────────────────────────────────────
+
+  {
+    id:     'chaos',
+    zh:     '混沌',
+    en:     'Chaos',
+    defZh:  '确定性系统对初始条件极度敏感，微小的初始差异随时间指数级放大，导致长期行为不可预测。双摆是最直观的混沌系统之一。',
+    defEn:  'Deterministic systems can exhibit unpredictable long-term behaviour when tiny differences in initial conditions grow exponentially over time. The double pendulum is a classic demonstration.',
+    wikiEn: 'Chaos_theory',
+    wikiZh: '混沌理论',
+  },
+  {
+    id:      'lyapunov',
+    zh:      '李雅普诺夫指数',
+    en:      'Lyapunov Exponent',
+    defZh:   '量化混沌系统中相邻轨迹指数分离速率的数值。正李雅普诺夫指数是混沌的标志，其倒数给出系统的可预测时间尺度。',
+    defEn:   'A number that measures how quickly two nearby trajectories in a dynamical system diverge. A positive exponent signals chaos; its inverse sets the predictability horizon.',
+    formula: 'λ = lim_{t→∞} (1/t) ln|δZ(t)/δZ(0)|',
+    wikiEn:  'Lyapunov_exponent',
+    wikiZh:  '李雅普诺夫指数',
+  },
+  {
+    id:     'phase-space',
+    zh:     '相空间',
+    en:     'Phase Space',
+    defZh:  '以系统所有广义坐标和动量为坐标轴构成的抽象空间。系统的运动状态对应相空间中的一个点，其随时间的轨迹称为相轨迹。混沌吸引子在相空间中呈现出奇特的分形结构。',
+    defEn:  'An abstract space whose axes are all generalised coordinates and momenta of a system. The system\'s state is a single point; its evolution traces a phase trajectory. Chaotic attractors reveal fractal structure here.',
+    wikiEn: 'Phase_space',
+    wikiZh: '相空间',
+  },
+  {
+    id:      'lagrangian',
+    zh:      '拉格朗日量',
+    en:      'Lagrangian',
+    defZh:   '系统动能与势能之差 L = T − V，是分析力学的核心函数。欧拉–拉格朗日方程由最小作用量原理导出，等价于牛顿运动方程但适用于任意广义坐标。',
+    defEn:   'The function L = T − V (kinetic minus potential energy) at the heart of analytical mechanics. The Euler–Lagrange equations derived from Hamilton\'s principle are equivalent to Newton\'s laws but work in any coordinate system.',
+    formula: 'L = T − V,  d/dt(∂L/∂q̇) − ∂L/∂q = 0',
+    wikiEn:  'Lagrangian_mechanics',
+    wikiZh:  '拉格朗日力学',
+  },
+  {
+    id:     'rk4',
+    zh:     '龙格–库塔法（四阶）',
+    en:     'Runge–Kutta Method (RK4)',
+    defZh:  '求解常微分方程的经典数值积分方法，每步对导数在四个中间点采样并加权平均，局部截断误差为 O(h⁵)。是大多数物理模拟的首选积分器。',
+    defEn:  'A classic numerical integrator for ordinary differential equations. It evaluates the derivative at four intermediate points per step, achieving O(h⁵) local error. The workhorse of most physics simulations.',
+    formula: 'y_{n+1} = y_n + h/6 (k₁ + 2k₂ + 2k₃ + k₄)',
+    wikiEn:  'Runge%E2%80%93Kutta_methods',
+    wikiZh:  '龙格－库塔法',
+  },
+
+
+  // ── Batch 2: Gravity & Quantum Basics ─────────────────────────────────────
+
+  {
+    id:      'grav-potential',
+    zh:      '引力势',
+    en:      'Gravitational Potential',
+    defZh:   '单位质量在引力场中的势能，等于将质量从无穷远处移到该点所做的功。对于点质量 M，引力势为 Φ = −GM/r，负号表示引力为束缚力。',
+    defEn:   'The potential energy per unit mass in a gravitational field, equal to the work done per unit mass moving from infinity to that point. For a point mass M it is Φ = −GM/r; the negative sign reflects the attractive binding nature of gravity.',
+    formula: 'Φ = −GM/r',
+    wikiEn:  'Gravitational_potential',
+    wikiZh:  '引力势',
+  },
+  {
+    id:      'wavefunction',
+    zh:      '波函数',
+    en:      'Wave Function',
+    defZh:   '量子力学中描述粒子状态的复数函数 ψ(x,t)，其模的平方 |ψ|² 给出粒子在某位置被测量到的概率密度。波函数满足薛定谔方程，并可叠加形成干涉。',
+    defEn:   'A complex-valued function ψ(x,t) encoding the complete quantum state of a particle. Its modulus squared |ψ|² is the probability density of finding the particle at position x. Wave functions obey the Schrödinger equation and can interfere.',
+    formula: 'iħ ∂ψ/∂t = Ĥψ',
+    wikiEn:  'Wave_function',
+    wikiZh:  '波函数',
+  },
+  {
+    id:      'uncertainty',
+    zh:      '不确定性原理',
+    en:      'Uncertainty Principle',
+    defZh:   '海森堡不确定性原理表明，粒子的位置与动量不能同时被精确测量，两者的标准差乘积有下界 ΔxΔp ≥ ħ/2。这是量子力学的基本原理，而非测量技术的局限。',
+    defEn:   'Heisenberg\'s principle states that position and momentum cannot both be known precisely at the same time. The product of their standard deviations has a fundamental lower bound ΔxΔp ≥ ħ/2 — a consequence of wave mechanics, not measurement imprecision.',
+    formula: 'ΔxΔp ≥ ħ/2',
+    wikiEn:  'Uncertainty_principle',
+    wikiZh:  '不确定性原理',
+  },
+  {
+    id:      'tunneling',
+    zh:      '量子隧穿',
+    en:      'Quantum Tunneling',
+    defZh:   '粒子穿越经典力学禁止区域（势垒）的量子现象。即使粒子的能量低于势垒高度，[波函数|wavefunction]在势垒内指数衰减但不为零，因此有一定概率出现在势垒另一侧。',
+    defEn:   'The quantum phenomenon in which a particle passes through a potential barrier even when its energy is classically insufficient. The [wave function|wavefunction] decays exponentially inside the barrier but remains nonzero, giving a finite transmission probability.',
+    formula: 'T ≈ exp(−2∫√(2m(V−E)/ħ²) dx)',
+    wikiEn:  'Quantum_tunnelling',
+    wikiZh:  '量子穿隧效应',
+  },
+  {
+    id:     'wave-particle',
+    zh:     '波粒二象性',
+    en:     'Wave–Particle Duality',
+    defZh:  '所有量子实体既展现波的特性（如干涉、衍射），又展现粒子的特性（如局域化的碰撞）。德布罗意关系 λ = h/p 将粒子动量与其物质波波长联系起来。',
+    defEn:  'All quantum objects exhibit both wave-like (interference, diffraction) and particle-like (localized detection) properties. De Broglie\'s relation λ = h/p connects a particle\'s momentum to its matter wavelength.',
+    formula: 'λ = h/p',
+    wikiEn:  'Wave%E2%80%93particle_duality',
+    wikiZh:  '波粒二象性',
+  },
+
+
+  // ── Batch 3: Quantum Phenomena ────────────────────────────────────────────
+
+  {
+    id:     'interference',
+    zh:     '量子干涉',
+    en:     'Quantum Interference',
+    defZh:  '量子振幅（而非概率）叠加时产生的现象。路径振幅可相长或相消叠加，导致粒子在某些区域出现概率增强，在另一些区域减弱甚至为零，双缝实验是最典型的例子。',
+    defEn:  'The result of adding quantum amplitudes — not probabilities — from different paths. Amplitudes can constructively or destructively interfere, creating regions of enhanced or zero probability. The double-slit experiment is the archetypal demonstration.',
+    wikiEn: 'Interference_(wave_propagation)',
+    wikiZh: '干涉（波传播）',
+  },
+  {
+    id:     'collapse',
+    zh:     '波函数坍缩',
+    en:     'Wavefunction Collapse',
+    defZh:  '量子测量使系统从叠加态瞬间"坍缩"到某一本征态的过程。坍缩的物理机制至今仍有争议，哥本哈根诠释、多世界诠释等对此给出不同解释。',
+    defEn:  'The apparent instantaneous transition of a quantum system from a superposition to a single eigenstate upon measurement. The physical mechanism remains debated: Copenhagen, Many-Worlds, and decoherence approaches each offer different explanations.',
+    wikiEn: 'Wave_function_collapse',
+    wikiZh: '波函数坍缩',
+  },
+  {
+    id:     'entanglement',
+    zh:     '量子纠缠',
+    en:     'Quantum Entanglement',
+    defZh:  '两个或多个粒子的量子态不可分离地关联在一起，对其中一个的测量会瞬时影响另一个的状态，无论它们相距多远。爱因斯坦称之为"幽灵般的超距作用"，贝尔不等式的违反证实了纠缠的真实性。',
+    defEn:  'A quantum correlation in which two or more particles share a non-separable state: measuring one instantly constrains the other\'s outcome, regardless of separation. Einstein called it "spooky action at a distance"; Bell inequality violations confirm it is real.',
+    wikiEn: 'Quantum_entanglement',
+    wikiZh: '量子纠缠',
+  },
+  {
+    id:     'quantum-number',
+    zh:     '量子数',
+    en:     'Quantum Number',
+    defZh:  '描述量子系统离散能量本征态的整数或半整数标签，如氢原子的主量子数 n、角量子数 l、磁量子数 m。每组量子数唯一确定一个原子轨道的形状与能量。',
+    defEn:  'Integer or half-integer labels that specify discrete energy eigenstates of a quantum system. For the hydrogen atom: principal n, angular momentum l, magnetic m, and spin mₛ. Each combination uniquely defines an orbital\'s shape and energy.',
+    wikiEn: 'Quantum_number',
+    wikiZh: '量子数',
+  },
+  {
+    id:      'spin',
+    zh:      '自旋',
+    en:      'Spin',
+    defZh:   '粒子的内禀角动量，没有经典类比。自旋量子数为半整数（费米子，如电子 s=1/2）或整数（玻色子，如光子 s=1）。泡利不相容原理源于费米子的反对称性，决定了原子结构和化学元素的性质。',
+    defEn:   'Intrinsic angular momentum of a particle with no classical analogue. Half-integer spin (fermions, e.g. electron s=½) or integer spin (bosons, e.g. photon s=1). Pauli\'s exclusion principle for fermions underpins atomic structure and the periodic table.',
+    formula: 'Ŝ² |s,mₛ⟩ = ħ²s(s+1)|s,mₛ⟩',
+    wikiEn:  'Spin_(physics)',
+    wikiZh:  '自旋',
+  },
+
+
+  // ── Batch 4: Thermodynamics & Radiation ───────────────────────────────────
+
+  {
+    id:      'wkb',
+    zh:      'WKB 近似',
+    en:      'WKB Approximation',
+    defZh:   'Wentzel–Kramers–Brillouin 半经典近似，适用于势能变化缓慢的情形。它用局部平面波拟合波函数，可解析估算量子隧穿透射系数和束缚态能级。',
+    defEn:   'A semiclassical approximation (Wentzel–Kramers–Brillouin) valid when the potential varies slowly. It approximates the wavefunction locally as a plane wave and provides analytic estimates of tunneling transmission coefficients and bound-state energies.',
+    formula: 'ψ ∝ exp(±i/ħ ∫p(x)dx)',
+    wikiEn:  'WKB_approximation',
+    wikiZh:  'WKB近似',
+  },
+  {
+    id:      'blackbody',
+    zh:      '黑体',
+    en:      'Blackbody',
+    defZh:   '能完全吸收所有入射电磁辐射的理想物体。黑体辐射的谱分布仅取决于温度，与材料无关。普朗克对黑体辐射谱的解释是量子论的诞生点。',
+    defEn:   'An ideal object that absorbs all incident electromagnetic radiation. Its emission spectrum depends only on temperature, not material. Planck\'s explanation of the blackbody spectrum in 1900 marked the birth of quantum theory.',
+    wikiEn:  'Black-body_radiation',
+    wikiZh:  '黑体辐射',
+  },
+  {
+    id:      'planck-law',
+    zh:      '普朗克定律',
+    en:      'Planck\'s Law',
+    defZh:   '描述黑体在热平衡时辐射谱能量密度的精确公式。普朗克假设电磁场能量以离散量子 E = hν 方式交换，从而避免了经典理论的紫外灾难。',
+    defEn:   'The exact formula for the spectral energy density of blackbody radiation. Planck\'s 1900 derivation assumed energy is exchanged in discrete quanta E = hν, resolving the ultraviolet catastrophe and founding quantum mechanics.',
+    formula: 'B(ν,T) = 2hν³/c² · 1/(e^{hν/kT}−1)',
+    wikiEn:  'Planck%27s_law',
+    wikiZh:  '普朗克定律',
+  },
+  {
+    id:      'wien',
+    zh:      '维恩位移定律',
+    en:      'Wien\'s Displacement Law',
+    defZh:   '黑体辐射峰值波长与温度的乘积为常数：λ_max·T = 2.898×10⁻³ m·K。温度越高，辐射峰值向短波（蓝色）移动，这解释了为什么恒星颜色与表面温度有关。',
+    defEn:   'The peak wavelength of blackbody emission shifts inversely with temperature: λ_max·T = 2.898×10⁻³ m·K. Hotter stars appear blue; cooler ones appear red. This law lets astronomers infer stellar surface temperatures from colour.',
+    formula: 'λ_max · T = 2.898 × 10⁻³ m·K',
+    wikiEn:  'Wien%27s_displacement_law',
+    wikiZh:  '维恩位移定律',
+  },
+  {
+    id:     'uv-catastrophe',
+    zh:     '紫外灾难',
+    en:     'Ultraviolet Catastrophe',
+    defZh:  '经典统计力学（瑞利–金斯定律）预言黑体辐射在高频处能量密度趋于无穷大，与实验严重矛盾。普朗克的量子化假设解决了这一危机，标志着量子革命的开始。',
+    defEn:  'The prediction of classical statistical mechanics (Rayleigh–Jeans law) that blackbody radiated energy diverges at high frequencies — a catastrophic failure. Planck\'s energy quantisation resolved the crisis and launched the quantum revolution.',
+    wikiEn: 'Ultraviolet_catastrophe',
+    wikiZh: '紫外灾难',
+  },
+
+
+  // ── Batch 5: Statistical Mechanics & Special Relativity ───────────────────
+
+  {
+    id:     'ising',
+    zh:     '伊辛模型',
+    en:     'Ising Model',
+    defZh:  '描述铁磁材料中自旋相互作用的格点模型。每个格点上的自旋只能取 ±1 两个值，相邻自旋有铁磁耦合。二维伊辛模型有严格解，在临界温度处展现相变和标度不变性。',
+    defEn:  'A lattice model of ferromagnetism where each site holds a spin ±1 that interacts with its neighbours. The 2D Ising model has an exact solution (Onsager 1944) and displays a phase transition with scale-invariant fluctuations at the critical temperature.',
+    formula: 'H = −J ΣᵢⱼSᵢSⱼ − h ΣᵢSᵢ',
+    wikiEn:  'Ising_model',
+    wikiZh:  '易辛模型',
+  },
+  {
+    id:     'phase-transition',
+    zh:     '相变',
+    en:     'Phase Transition',
+    defZh:  '物质在某个控制参数（如温度、压力）的临界值处发生突变的现象，例如水的沸腾、磁铁的退磁。连续相变（二阶相变）伴随序参量连续消失和关联长度发散，表现出普适标度律。',
+    defEn:  'An abrupt change in a system\'s macroscopic properties at a critical value of a control parameter (temperature, pressure, etc.). Continuous (second-order) transitions feature a continuously vanishing order parameter and diverging correlation length, obeying universal scaling laws.',
+    wikiEn: 'Phase_transition',
+    wikiZh: '相变',
+  },
+  {
+    id:      'curie-temp',
+    zh:      '居里温度',
+    en:      'Curie Temperature',
+    defZh:   '铁磁体失去自发磁化的临界温度。高于居里温度时，热涨落压倒自旋间的铁磁耦合，材料变为顺磁体。对于铁，居里温度约为 1043 K。',
+    defEn:   'The critical temperature above which a ferromagnet loses its spontaneous magnetisation and becomes paramagnetic. Above Tc, thermal fluctuations overcome the spin–spin coupling. For iron Tc ≈ 1043 K.',
+    formula: 'M(T) ∝ (Tc − T)^β,  β ≈ 0.326 (3D Ising)',
+    wikiEn:  'Curie_temperature',
+    wikiZh:  '居里温度',
+  },
+  {
+    id:      'lorentz',
+    zh:      '洛伦兹变换',
+    en:      'Lorentz Transformation',
+    defZh:   '狭义相对论中联系两个惯性参考系时空坐标的线性变换，保持光速不变和时空间隔 ds² 不变。它取代了伽利略变换，揭示了时间与空间的相对性。',
+    defEn:   'The linear transformation relating the spacetime coordinates of two inertial frames in special relativity. It preserves the speed of light and the spacetime interval ds², replacing the Galilean transformation and revealing the relativity of time and space.',
+    formula: 't′ = γ(t − vx/c²),  x′ = γ(x − vt),  γ = 1/√(1−v²/c²)',
+    wikiEn:  'Lorentz_transformation',
+    wikiZh:  '洛伦兹变换',
+  },
+  {
+    id:      'time-dilation',
+    zh:      '时间膨胀',
+    en:      'Time Dilation',
+    defZh:   '运动时钟走得比静止时钟慢，膨胀因子为洛伦兹因子 γ。GPS 卫星每天因速度导致时间慢约 7 微秒，若不校正会导致定位误差积累。引力场中也存在引力时间膨胀。',
+    defEn:   'Moving clocks tick more slowly by the Lorentz factor γ. GPS satellites run slow by ~7 μs/day due to their velocity (with an opposing gravitational blueshift of ~45 μs/day); corrections are essential for accurate positioning.',
+    formula: 'Δt = γ Δτ,  γ = 1/√(1−v²/c²)',
+    wikiEn:  'Time_dilation',
+    wikiZh:  '时间膨胀',
+  },
+
+
+  // ── Batch 6: General Relativity I ─────────────────────────────────────────
+
+  {
+    id:      'proper-time',
+    zh:      '固有时',
+    en:      'Proper Time',
+    defZh:   '沿观察者世界线测量的时间，即随观察者运动的时钟所显示的时间。它是洛伦兹不变量，由时空间隔 dτ² = dt² − dx²/c² 定义。双生子佯谬中两兄弟固有时不同正是源于此。',
+    defEn:   'The time measured by a clock moving along with an observer — the Lorentz-invariant quantity dτ² = dt² − dx²/c². It is always less than the coordinate time for a moving observer. The twin paradox hinges on the difference in proper times along the two worldlines.',
+    formula: 'dτ = dt√(1 − v²/c²)',
+    wikiEn:  'Proper_time',
+    wikiZh:  '固有时',
+  },
+  {
+    id:     'light-cone',
+    zh:     '光锥',
+    en:     'Light Cone',
+    defZh:  '闵可夫斯基时空中以某事件为顶点、以光速传播所能到达的全部事件构成的锥面。光锥内部（类时区域）是可因果联系的区域，光锥外部（类空区域）因果无法关联。',
+    defEn:  'The set of all spacetime events reachable from a given event at the speed of light, forming a double cone in Minkowski space. Events inside the cone are causally connected (timelike separation); those outside cannot be causally related (spacelike separation).',
+    wikiEn: 'Light_cone',
+    wikiZh: '光锥',
+  },
+  {
+    id:      'geodesic',
+    zh:      '测地线',
+    en:      'Geodesic',
+    defZh:   '弯曲时空中两点间固有时（或路径长度）最长（或最短）的曲线，是广义相对论中自由落体的运动轨迹。光子在引力场中沿零测地线（ds²=0）传播，产生引力透镜效应。',
+    defEn:   'The curve of extremal proper time (or length) between two points in curved spacetime — the path taken by freely falling particles. Photons follow null geodesics (ds²=0), which is why gravity deflects light and produces gravitational lensing.',
+    formula: 'd²xᵘ/dτ² + Γᵘ_{αβ} (dxᵅ/dτ)(dx^β/dτ) = 0',
+    wikiEn:  'Geodesic',
+    wikiZh:  '测地线',
+  },
+  {
+    id:      'grav-wave',
+    zh:      '引力波',
+    en:      'Gravitational Wave',
+    defZh:   '加速质量引起的时空曲率涟漪，以光速传播。它以横向四极辐射方式传播，导致垂直方向的空间交替拉伸和压缩。2015 年 LIGO 首次直接探测到双黑洞并合产生的引力波。',
+    defEn:   'Ripples in spacetime curvature caused by accelerating masses, propagating at the speed of light. They stretch and compress space transversely in two polarisations. LIGO made the first direct detection (GW150914, 2015) from a merging binary black hole.',
+    formula: 'h ~ (G/c⁴) · (d²Q/dt²) / r',
+    wikiEn:  'Gravitational_wave',
+    wikiZh:  '引力波',
+  },
+  {
+    id:      'chirp-mass',
+    zh:      '啁啾质量',
+    en:      'Chirp Mass',
+    defZh:   '双星系统引力波辐射中最容易从波形直接测量的质量组合，决定了引力波频率随时间增大（"啁啾"）的速率。对于质量分别为 m₁、m₂ 的双星，啁啾质量 ℳ = (m₁m₂)^{3/5}/(m₁+m₂)^{1/5}。',
+    defEn:   'The mass combination most directly measurable from a gravitational-wave chirp signal; it sets the rate at which the orbital frequency sweeps upward. For component masses m₁, m₂: ℳ = (m₁m₂)^{3/5}/(m₁+m₂)^{1/5}.',
+    formula: 'ℳ = (m₁m₂)^{3/5} / (m₁+m₂)^{1/5}',
+    wikiEn:  'Chirp_mass',
+    wikiZh:  '啁啾质量',
+  },
+
+
+  // ── Batch 7: Black Holes & Symmetry Breaking ──────────────────────────────
+
+  {
+    id:     'grav-lensing',
+    zh:     '引力透镜',
+    en:     'Gravitational Lensing',
+    defZh:  '大质量天体弯曲附近时空，使光沿弯曲测地线传播，产生类似光学透镜的放大、变形和多像效应。爱因斯坦 1919 年日食观测首次证实了该效应，成为广义相对论的重要验证。',
+    defEn:  'Massive objects curve spacetime, bending light paths and acting like cosmic lenses — magnifying, distorting, and sometimes creating multiple images of background sources. The 1919 solar eclipse expedition confirmed Einstein\'s prediction, establishing general relativity.',
+    wikiEn: 'Gravitational_lens',
+    wikiZh: '重力透镜',
+  },
+  {
+    id:      'einstein-ring',
+    zh:      '爱因斯坦环',
+    en:      'Einstein Ring',
+    defZh:   '当光源、引力透镜天体和观测者完全共线时，光源的像形成一个完美的环形，称为爱因斯坦环。其角半径 θ_E = √(4GM·D_ls/(c²D_l·D_s)) 与透镜质量有关，可用于测量透镜天体质量。',
+    defEn:   'When a source, gravitational lens, and observer are perfectly aligned, the source\'s image forms a complete ring. The Einstein radius θ_E depends on the lens mass and geometry and is used to weigh galaxies and dark matter halos.',
+    formula: 'θ_E = √(4GM D_ls / c² D_l D_s)',
+    wikiEn:  'Einstein_ring',
+    wikiZh:  '爱因斯坦环',
+  },
+  {
+    id:      'schwarzschild-r',
+    zh:      '史瓦西半径',
+    en:      'Schwarzschild Radius',
+    defZh:   '天体被压缩成黑洞所需的临界半径，也是球对称不旋转黑洞事件视界的半径。任何质量都有对应的史瓦西半径：太阳约 3 km，地球约 9 mm，质子约 10⁻⁵³ m。',
+    defEn:   'The critical radius to which a mass must be compressed to form a (Schwarzschild) black hole — the radius of the event horizon for a non-rotating, spherical black hole. For the Sun rₛ ≈ 3 km; for Earth ≈ 9 mm.',
+    formula: 'rₛ = 2GM/c²',
+    wikiEn:  'Schwarzschild_radius',
+    wikiZh:  '史瓦西半径',
+  },
+  {
+    id:     'event-horizon',
+    zh:     '事件视界',
+    en:     'Event Horizon',
+    defZh:  '黑洞周围的因果边界，越过此处的任何物质或光都无法逃离黑洞。对于史瓦西黑洞，事件视界即史瓦西半径处。视界内的事件对外部观察者永远不可见。',
+    defEn:  'The causal boundary surrounding a black hole beyond which nothing — matter or light — can escape. For a Schwarzschild black hole it lies at the Schwarzschild radius. Events inside the horizon are forever hidden from external observers.',
+    wikiEn: 'Event_horizon',
+    wikiZh: '事件视界',
+  },
+  {
+    id:      'ssb',
+    zh:      '自发对称破缺',
+    en:      'Spontaneous Symmetry Breaking',
+    defZh:   '系统的基态或真空态不具有拉格朗日量所有的对称性，从而"选择"了某一特定状态。希格斯机制、铁磁体低于居里温度时自发磁化以及超导体都是典型例子。南部–戈德斯通定理指出每个破缺的连续对称性对应一个无质量的玻色子。',
+    defEn:   'The ground state of a system does not share all the symmetries of its Lagrangian, spontaneously "choosing" a particular state. The Higgs mechanism, ferromagnetic alignment below Tc, and superconductivity are all examples. Goldstone\'s theorem: each broken continuous symmetry yields a massless boson.',
+    wikiEn:  'Spontaneous_symmetry_breaking',
+    wikiZh:  '自发对称性破缺',
+  },
+
+
+  // ── Batch 8: Particle Physics & QFT ──────────────────────────────────────
+
+  {
+    id:      'vev',
+    zh:      '真空期望值',
+    en:      'Vacuum Expectation Value',
+    defZh:   '量子场在真空态下的期望值。希格斯场的真空期望值约为 246 GeV，正是这个非零值通过希格斯机制赋予了 W 和 Z 玻色子及费米子质量。',
+    defEn:   'The expectation value of a quantum field in its vacuum state. The Higgs field\'s VEV ≈ 246 GeV is nonzero; via the Higgs mechanism, this is what gives W and Z bosons (and fermions) their masses.',
+    formula: '⟨0|φ|0⟩ = v ≈ 246 GeV',
+    wikiEn:  'Vacuum_expectation_value',
+    wikiZh:  '真空期望值',
+  },
+  {
+    id:      'higgs-mech',
+    zh:      '希格斯机制',
+    en:      'Higgs Mechanism',
+    defZh:   '规范玻色子通过与希格斯场耦合获得质量的机制。在自发对称破缺后，原本无质量的规范玻色子"吞噬"了戈德斯通玻色子并获得纵向极化，从而有了质量。2012 年 LHC 发现了希格斯玻色子。',
+    defEn:   'The mechanism by which gauge bosons acquire mass through coupling to the Higgs field. After spontaneous symmetry breaking, each massless gauge boson absorbs a Goldstone boson and gains a longitudinal polarisation — becoming massive. The Higgs boson was discovered at the LHC in 2012.',
+    wikiEn:  'Higgs_mechanism',
+    wikiZh:  '希格斯机制',
+  },
+  {
+    id:      'feynman-diag',
+    zh:      '费曼图',
+    en:      'Feynman Diagram',
+    defZh:   '量子场论中计算粒子散射振幅的图形工具，由理查德·费曼于 1940 年代发明。图中实线表示费米子传播子，波浪线表示玻色子传播子，顶点代表相互作用。每张图对应微扰展开中的一项。',
+    defEn:   'Graphical bookkeeping tools for calculating particle scattering amplitudes in quantum field theory, invented by Richard Feynman in the 1940s. Solid lines are fermion propagators, wiggly lines are boson propagators, and vertices are interaction terms — each diagram is a term in the perturbation expansion.',
+    wikiEn:  'Feynman_diagram',
+    wikiZh:  '费曼图',
+  },
+  {
+    id:      'virtual-particle',
+    zh:      '虚粒子',
+    en:      'Virtual Particle',
+    defZh:   '费曼图内线所代表的中间态粒子，不满足能量–动量在壳条件（E² ≠ p²c² + m²c⁴）。虚粒子存在于量子涨落中，寿命极短（受不确定性原理限制），不能直接被探测，但其效应（如卡西米尔效应、真空极化）可被间接测量。',
+    defEn:   'An internal line in a Feynman diagram representing an off-shell intermediate state (E² ≠ p²c²+m²c⁴). Virtual particles mediate forces and arise from quantum fluctuations; their effects — Casimir force, vacuum polarisation — are measurable even though virtual particles themselves are never directly detected.',
+    wikiEn:  'Virtual_particle',
+    wikiZh:  '虚粒子',
+  },
+  {
+    id:      'propagator',
+    zh:      '传播子',
+    en:      'Propagator',
+    defZh:   '量子场论中描述粒子从时空一点传播到另一点的格林函数，是费曼图内线的数学表达。标量场传播子为 1/(p²−m²)，它在质壳附近的极点对应真实粒子态。',
+    defEn:   'The Green\'s function describing how a quantum field propagates between two spacetime points — the mathematical expression for an internal line in a Feynman diagram. The scalar propagator 1/(p²−m²) has a pole on the mass shell corresponding to a real particle.',
+    formula: 'D(p) = i/(p²−m²+iε)',
+    wikiEn:  'Propagator_(quantum_mechanics)',
+    wikiZh:  '传播子',
+  },
+
+
+  // ── Batch 9: String Theory & Foundations ──────────────────────────────────
+
+  {
+    id:      'string-theory',
+    zh:      '弦理论',
+    en:      'String Theory',
+    defZh:   '将基本粒子视为一维振动弦（而非点粒子）的理论框架。不同振动模式对应不同粒子（包括引力子），自然地统一了引力与量子力学。弦理论要求额外空间维度，并预言超对称。',
+    defEn:   'A theoretical framework in which fundamental particles are modelled as one-dimensional vibrating strings rather than point particles. Different vibrational modes correspond to different particles (including the graviton), naturally unifying gravity with quantum mechanics. Requires extra spatial dimensions and supersymmetry.',
+    wikiEn:  'String_theory',
+    wikiZh:  '弦理论',
+  },
+  {
+    id:     'worldsheet',
+    zh:     '世界面',
+    en:     'Worldsheet',
+    defZh:  '弦在时空中运动所扫过的二维曲面，是点粒子世界线的推广。开弦的世界面为带，闭弦的世界面为管（圆柱体）。弦的动力学由南部–後藤作用量或多林–兹维巴赫–登斯坦鲍姆作用量描述。',
+    defEn:  'The two-dimensional surface traced by a string as it moves through spacetime — the analogue of a point particle\'s worldline. Open strings sweep out strips; closed strings sweep out tubes. String dynamics is governed by the Nambu–Goto or Polyakov action on the worldsheet.',
+    wikiEn: 'Worldsheet',
+    wikiZh: '世界面',
+  },
+  {
+    id:      'calabi-yau',
+    zh:      'Calabi–Yau 流形',
+    en:      'Calabi–Yau Manifold',
+    defZh:   '一类具有特殊全纯结构（SU(n) 和乐群）的复数流形。弦理论要求六个额外维度紧化成 Calabi–Yau 流形，其拓扑结构决定了低能有效场论中的粒子种类和耦合常数。',
+    defEn:   'A complex manifold with special holonomy group SU(n), satisfying the Kähler and Ricci-flat conditions. In string theory, the six extra spatial dimensions are compactified on a Calabi–Yau manifold; its topology determines the particle spectrum and coupling constants of the low-energy effective theory.',
+    wikiEn:  'Calabi%E2%80%93Yau_manifold',
+    wikiZh:  'Calabi–Yau流形',
+  },
+  {
+    id:     'extra-dims',
+    zh:     '额外维度',
+    en:     'Extra Dimensions',
+    defZh:  '超出我们所感知的三个空间维度之外的额外空间方向。弦理论需要 10 或 11 个时空维度，额外维度可能极小（紧化至普朗克尺度）或通过翘曲机制（RS 模型）隐藏。探测额外维度是大型强子对撞机的目标之一。',
+    defEn:  'Spatial dimensions beyond the three we experience. String theory requires 10 or 11 spacetime dimensions; extra dimensions may be compactified at the Planck scale or "warped" (Randall–Sundrum model). Their signatures — micro black holes, Kaluza–Klein excitations — are sought at the LHC.',
+    wikiEn: 'Extra_dimensions',
+    wikiZh: '额外维度',
+  },
+  {
+    id:      'bell-inequality',
+    zh:      '贝尔不等式',
+    en:      'Bell Inequality',
+    defZh:   '约翰·贝尔于 1964 年推导出的不等式，任何满足局域隐变量假设的理论都必须满足它。量子纠缠态对贝尔不等式的违反，在阿斯佩克特等人的实验中被实验证实，排除了经典局域隐变量理论。2022 年诺贝尔物理学奖授予这一领域的实验物理学家。',
+    defEn:   'An inequality derived by John Bell in 1964 that any local hidden-variable theory must satisfy. Entangled quantum states violate it — confirmed experimentally by Aspect et al. (1982) and many subsequent tests, ruling out local realism. The 2022 Nobel Prize in Physics honoured the experimental work.',
+    formula: '|⟨AB⟩ − ⟨AB′⟩| + |⟨A′B⟩ + ⟨A′B′⟩| ≤ 2  (CHSH)',
+    wikiEn:  'Bell%27s_theorem',
+    wikiZh:  '贝尔定理',
+  },
+
+] // end of GLOSSARY array
+
+export const GLOSSARY_MAP: Record<string, GlossaryTerm> =
+  Object.fromEntries(GLOSSARY.map(t => [t.id, t]))

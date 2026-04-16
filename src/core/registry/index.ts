@@ -57,3 +57,4 @@ registerModule('gravitational-lensing', () => import('@/modules/gravitational-le
 registerModule('quantum-entanglement',  () => import('@/modules/quantum-entanglement'))
 registerModule('brownian-motion',         () => import('@/modules/brownian-motion'))
 registerModule('wavefunction-evolution',  () => import('@/modules/wavefunction-evolution'))
+registerModule('lagrange-points',         () => import('@/modules/lagrange-points'))
