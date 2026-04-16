@@ -1,40 +1,104 @@
 'use client'
 // ── TheoryTree — Canvas-based immersive physics theory timeline ───────────────
-// Time flows UPWARD: oldest (1687 Newton) at bottom, newest (1997 Maldacena) at top.
+// Time flows UPWARD: oldest (Newton 1687) at bottom, newest (LIGO 2015) at top.
+// Organic tree layout: nodes spread wider as theories branch and develop.
 // Particle effects flow along influence edges. Pan + pinch-zoom. Click for detail.
 
 import { useRef, useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { NODES, NODE_MAP, CAT_CONFIG, type TheoryNode } from '@/core/theory-tree/data'
+import { NODES, NODE_MAP, CAT_CONFIG, type TheoryNode, type Category } from '@/core/theory-tree/data'
 import { useLang } from '@/core/i18n'
 
 // ── Layout constants ───────────────────────────────────────────────────────────
 
 const YEAR_START = 1680
-const YEAR_END   = 2010
+const YEAR_END   = 2020
 const YEAR_RANGE = YEAR_END - YEAR_START
-const LANE_W     = 165
 const NODE_R     = 20
-const PAD_Y      = 110
-const CANVAS_H   = YEAR_RANGE * 6 + PAD_Y * 2   // ~2200px
-const CANVAS_W   = 6 * LANE_W + 130              // ~1120px
+const PAD_Y      = 140
+const PX_PER_YR  = 9
+const CANVAS_H   = YEAR_RANGE * PX_PER_YR + PAD_Y * 2   // ≈ 3220 px
+const CANVAS_W   = 2500
+
+// Six category columns evenly spread across the canvas
+const CAT_KEYS: Category[] = ['classical', 'thermo', 'electro', 'quantum', 'relativity', 'unified']
+const CAT_SPREAD_PAD  = 200   // margin left/right before first/last category
+const CAT_SPREAD      = CANVAS_W - CAT_SPREAD_PAD * 2
+const CAT_STEP        = CAT_SPREAD / (CAT_KEYS.length - 1)  // ≈ 420 px
+
+const CAT_BASE_X: Record<string, number> = Object.fromEntries(
+  CAT_KEYS.map((cat, i) => [cat, CAT_SPREAD_PAD + i * CAT_STEP])
+)
 
 // Y mapping: oldest at BOTTOM, newest at TOP
 const yx = (year: number) =>
   CANVAS_H - PAD_Y - ((year - YEAR_START) / YEAR_RANGE) * (CANVAS_H - PAD_Y * 2)
 
-// X mapping: lane → horizontal position
-const lx = (lane: number) => 75 + lane * LANE_W
-
-// ── Precomputed node positions ─────────────────────────────────────────────────
+// ── Organic tree-layout algorithm ─────────────────────────────────────────────
+// 1. Each node starts at its category base-X.
+// 2. Nodes with identified parents are pulled 45 % toward the parents' average X.
+// 3. Multiple repulsion passes push nodes apart when they would overlap.
 
 interface NodePos { node: TheoryNode; x: number; y: number }
 
-const NODE_POS: NodePos[] = NODES.map((node) => ({
-  node,
-  x: lx(CAT_CONFIG[node.category].lane),
-  y: yx(node.year),
-}))
+function computeNodePositions(): NodePos[] {
+  // Build reverse map: parentMap[id] = ids of nodes that directly influence id
+  const parentMap: Record<string, string[]> = {}
+  for (const node of NODES) {
+    for (const toId of node.influences) {
+      if (!parentMap[toId]) parentMap[toId] = []
+      parentMap[toId].push(node.id)
+    }
+  }
+
+  // Process oldest-first so parent X values exist when children are computed
+  const sorted = [...NODES].sort((a, b) => a.year - b.year)
+
+  const x: Record<string, number> = {}
+  const y: Record<string, number> = {}
+
+  for (const node of sorted) {
+    const baseX     = CAT_BASE_X[node.category]
+    const parentIds = parentMap[node.id] ?? []
+    const parentXs  = parentIds.map(id => x[id]).filter((v): v is number => v !== undefined)
+
+    if (parentXs.length === 0) {
+      x[node.id] = baseX
+    } else {
+      const avgParentX = parentXs.reduce((a, b) => a + b, 0) / parentXs.length
+      // 55 % category anchor, 45 % lineage pull — preserves identity while showing inheritance
+      x[node.id] = 0.55 * baseX + 0.45 * avgParentX
+    }
+    y[node.id] = yx(node.year)
+  }
+
+  // Repulsion: push horizontally-overlapping nodes apart within a vertical band
+  const MIN_DX    = NODE_R * 3.2   // ≈ 64 px minimum horizontal gap
+  const VERT_BAND = NODE_R * 6     // ≈ 120 px — only repel nodes this close vertically
+
+  for (let pass = 0; pass < 50; pass++) {
+    let moved = false
+    for (let i = 0; i < sorted.length; i++) {
+      for (let j = i + 1; j < sorted.length; j++) {
+        const ni = sorted[i], nj = sorted[j]
+        if (Math.abs(y[ni.id] - y[nj.id]) > VERT_BAND) continue
+        const dx = x[nj.id] - x[ni.id]
+        if (Math.abs(dx) < MIN_DX) {
+          const push = (MIN_DX - Math.abs(dx)) * 0.5 + 0.5
+          const dir  = dx >= 0 ? 1 : -1
+          x[ni.id] -= push * dir
+          x[nj.id] += push * dir
+          moved = true
+        }
+      }
+    }
+    if (!moved) break
+  }
+
+  return NODES.map(node => ({ node, x: x[node.id], y: y[node.id] }))
+}
+
+const NODE_POS: NodePos[] = computeNodePositions()
 
 const POS_MAP: Record<string, NodePos> = Object.fromEntries(
   NODE_POS.map((np) => [np.node.id, np])
@@ -56,8 +120,8 @@ for (const node of NODES) {
 interface Particle {
   edgeFromId: string
   edgeToId:   string
-  progress:   number   // 0→1: source→target
-  speed:      number   // fraction per second
+  progress:   number   // 0 → 1: source → target
+  speed:      number   // fraction of edge per second
   color:      string
 }
 
@@ -84,19 +148,35 @@ function bezierPoint(t: number, fx: number, fy: number, tx: number, ty: number):
   const mt = 1 - t
   return [
     mt * mt * mt * fx + 3 * mt * mt * t * fx + 3 * mt * t * t * tx + t * t * t * tx,
-    mt * mt * mt * fy + 3 * mt * mt * t * my + 3 * mt * t  * t * my + t * t * t * ty,
+    mt * mt * mt * fy + 3 * mt * mt * t * my + 3 * mt * t * t * my + t * t * t * ty,
   ]
 }
 
 // ── Background stars ───────────────────────────────────────────────────────────
 
 interface Star { x: number; y: number; r: number; a: number }
-const STARS: Star[] = Array.from({ length: 220 }, () => ({
-  x: Math.random() * CANVAS_W * 1.3 - CANVAS_W * 0.15,
-  y: Math.random() * CANVAS_H * 1.2 - CANVAS_H * 0.1,
+const STARS: Star[] = Array.from({ length: 280 }, () => ({
+  x: Math.random() * CANVAS_W * 1.15 - CANVAS_W * 0.08,
+  y: Math.random() * CANVAS_H * 1.1  - CANVAS_H * 0.05,
   r: Math.random() * 1.3 + 0.25,
-  a: Math.random() * 0.4 + 0.05,
+  a: Math.random() * 0.35 + 0.05,
 }))
+
+// ── Dynamic year gridlines ─────────────────────────────────────────────────────
+// Denser labels when zoomed in, so temporal detail reveals itself.
+
+function getGridYears(zoom: number): number[] {
+  let step: number
+  if      (zoom >= 2.0) step = 10
+  else if (zoom >= 1.2) step = 25
+  else if (zoom >= 0.6) step = 50
+  else                  step = 100
+
+  const years: number[] = []
+  const first = Math.ceil(YEAR_START / step) * step
+  for (let yr = first; yr <= YEAR_END; yr += step) years.push(yr)
+  return years
+}
 
 // ── Component ──────────────────────────────────────────────────────────────────
 
@@ -105,9 +185,9 @@ export default function TheoryTree() {
   const containerRef = useRef<HTMLDivElement>(null)
   const rafRef       = useRef<number>(0)
 
-  // Mutable render state (no re-renders on change)
+  // Mutable render state — no re-renders on pan/zoom/hover
   const st = useRef({
-    panX: 0, panY: 0, zoom: 0.55,
+    panX: 0, panY: 0, zoom: 0.45,
     dragging: false,
     dragStartX: 0, dragStartY: 0, dragTotalMoved: 0,
     prevTouchDist: 0,
@@ -124,13 +204,14 @@ export default function TheoryTree() {
   const selectedRef = useRef(selected)
   selectedRef.current = selected
 
-  // ── Fit tree to viewport on first resize ────────────────────────────────────
+  // ── Fit tree to viewport on first load ──────────────────────────────────────
   const initView = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas || st.current.initialized) return
     const W = canvas.width, H = canvas.height
     if (W === 0 || H === 0) return
-    const zoom = Math.min((H * 0.94) / CANVAS_H, (W * 0.92) / CANVAS_W, 0.68)
+    // Fit full tree height; allow horizontal panning if viewport is narrower than canvas
+    const zoom = Math.min((H * 0.92) / CANVAS_H, (W * 0.90) / CANVAS_W, 0.55)
     st.current.zoom = zoom
     st.current.panX = (W - CANVAS_W * zoom) / 2
     st.current.panY = (H - CANVAS_H * zoom) / 2
@@ -216,7 +297,7 @@ export default function TheoryTree() {
     const cx   = (e.clientX - rect.left) * dpr
     const cy   = (e.clientY - rect.top)  * dpr
     const factor  = e.deltaY < 0 ? 1.10 : 0.91
-    const newZoom = Math.max(0.18, Math.min(3.5, s.zoom * factor))
+    const newZoom = Math.max(0.15, Math.min(4.0, s.zoom * factor))
     s.panX = cx - (cx - s.panX) * (newZoom / s.zoom)
     s.panY = cy - (cy - s.panY) * (newZoom / s.zoom)
     s.zoom = newZoom
@@ -260,7 +341,7 @@ export default function TheoryTree() {
         const rect = canvas.getBoundingClientRect()
         const cx = ((e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left) * dpr
         const cy = ((e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top)  * dpr
-        const newZoom = Math.max(0.18, Math.min(3.5, s.zoom * dist / s.prevTouchDist))
+        const newZoom = Math.max(0.15, Math.min(4.0, s.zoom * dist / s.prevTouchDist))
         s.panX = cx - (cx - s.panX) * (newZoom / s.zoom)
         s.panY = cy - (cy - s.panY) * (newZoom / s.zoom)
         s.zoom = newZoom
@@ -332,20 +413,21 @@ export default function TheoryTree() {
       const W = canvas!.width, H = canvas!.height
       const zoom = s.zoom, panX = s.panX, panY = s.panY
 
-      // ── Full-screen column backgrounds (screen space, before transform) ────────
-      // Drawn to full canvas height so no blank areas show when panning
+      // ── Background ────────────────────────────────────────────────────────────
       ctx.fillStyle = '#04040c'
       ctx.fillRect(0, 0, W, H)
-      for (const cfg of Object.values(CAT_CONFIG)) {
-        const worldLeft  = lx(cfg.lane) - LANE_W / 2
-        const worldRight = worldLeft + LANE_W
-        const screenLeft  = worldLeft  * zoom + panX
-        const screenRight = worldRight * zoom + panX
-        // Create a vertical gradient for visual richness
+
+      // Soft gradient column backgrounds centred on each category's base X
+      // Width ±220 px in world space; adjacent categories share some colour overlap
+      for (const [cat, cfg] of Object.entries(CAT_CONFIG)) {
+        const cx          = CAT_BASE_X[cat]
+        const halfW       = 220
+        const screenLeft  = (cx - halfW) * zoom + panX
+        const screenRight = (cx + halfW) * zoom + panX
         const grad = ctx.createLinearGradient(screenLeft, 0, screenRight, 0)
         grad.addColorStop(0,   cfg.color + '00')
-        grad.addColorStop(0.3, cfg.color + '10')
-        grad.addColorStop(0.7, cfg.color + '10')
+        grad.addColorStop(0.3, cfg.color + '0e')
+        grad.addColorStop(0.7, cfg.color + '0e')
         grad.addColorStop(1,   cfg.color + '00')
         ctx.fillStyle = grad
         ctx.fillRect(screenLeft, 0, screenRight - screenLeft, H)
@@ -354,8 +436,8 @@ export default function TheoryTree() {
       ctx.save()
       ctx.setTransform(zoom, 0, 0, zoom, panX, panY)
 
-      // LOD threshold: show tier-2 nodes when zoomed in enough
-      const showTier2 = zoom > 0.72
+      // LOD threshold: reveal tier-2 nodes when zoomed to ≥ 0.55
+      const showTier2 = zoom > 0.55
 
       // ── Stars ─────────────────────────────────────────────────────────────────
       for (const star of STARS) {
@@ -365,27 +447,29 @@ export default function TheoryTree() {
         ctx.fill()
       }
 
-      // ── Year gridlines ─────────────────────────────────────────────────────────
-      ctx.setLineDash([4, 12])
+      // ── Year gridlines (density scales with zoom) ─────────────────────────────
+      const gridYears = getGridYears(zoom)
+      ctx.setLineDash([4, 14])
       ctx.lineWidth = 0.6
-      ctx.strokeStyle = 'rgba(240,237,232,0.055)'
+      ctx.strokeStyle = 'rgba(240,237,232,0.05)'
       ctx.font = '9px monospace'
-      ctx.fillStyle = 'rgba(240,237,232,0.18)'
-      for (const yr of [1700, 1800, 1850, 1900, 1925, 1950, 1975, 2000]) {
-        const y = yx(yr)
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(CANVAS_W, y); ctx.stroke()
-        ctx.fillText(String(yr), 8, y - 5)
+      ctx.fillStyle = 'rgba(240,237,232,0.16)'
+      ctx.textAlign = 'left'
+      for (const yr of gridYears) {
+        const yy = yx(yr)
+        ctx.beginPath(); ctx.moveTo(0, yy); ctx.lineTo(CANVAS_W, yy); ctx.stroke()
+        ctx.fillText(String(yr), 10, yy - 5)
       }
       ctx.setLineDash([])
 
-      // ── Category column labels ─────────────────────────────────────────────────
+      // ── Category column labels (at top, anchored to base X) ───────────────────
       ctx.textAlign = 'center'
-      ctx.font = '7.5px monospace'
-      for (const cfg of Object.values(CAT_CONFIG)) {
+      ctx.font = '8px monospace'
+      for (const [cat, cfg] of Object.entries(CAT_CONFIG)) {
         ctx.fillStyle = cfg.color + 'AA'
         ctx.fillText(
           (curLang === 'zh' ? cfg.label : cfg.labelEn).toUpperCase(),
-          lx(cfg.lane), 42
+          CAT_BASE_X[cat], 50
         )
       }
       ctx.textAlign = 'left'
@@ -407,7 +491,6 @@ export default function TheoryTree() {
       for (const e of EDGES) {
         const from = POS_MAP[e.fromId], to = POS_MAP[e.toId]
         if (!from || !to) continue
-        // Hide edges involving tier-2 nodes when zoomed out
         if (!showTier2 && (from.node.tier === 2 || to.node.tier === 2)) continue
         const conn  = !hovId || (connectedIds.has(e.fromId) && connectedIds.has(e.toId))
         const alpha = hovId ? (conn ? 0.62 : 0.05) : 0.22
@@ -444,9 +527,8 @@ export default function TheoryTree() {
 
       // ── Nodes ─────────────────────────────────────────────────────────────────
       for (const { node, x, y } of NODE_POS) {
-        // LOD: tier-2 nodes fade in above zoom threshold
         if (node.tier === 2 && !showTier2) continue
-        const tier2Fade = node.tier === 2 ? Math.min(1, (zoom - 0.72) / 0.15) : 1
+        const tier2Fade = node.tier === 2 ? Math.min(1, (zoom - 0.55) / 0.15) : 1
 
         const cfg    = CAT_CONFIG[node.category]
         const isHov  = node.id === hovId
@@ -454,7 +536,6 @@ export default function TheoryTree() {
         const dimmed = hovId && !connectedIds.has(node.id) && !isHov
         const mul    = (dimmed ? 0.20 : 1) * tier2Fade
 
-        // Tier-2 nodes are slightly smaller
         const r = node.tier === 2 ? NODE_R * 0.72 : NODE_R
 
         // Dashed ring for nodes with interactive modules
@@ -498,7 +579,7 @@ export default function TheoryTree() {
         ctx.lineWidth   = isSel ? 2.5 : 1.5
         ctx.stroke()
 
-        // Year inside node (only tier-1 or when selected)
+        // Year inside node
         if (node.tier === 1 || isSel) {
           ctx.font      = `bold ${node.tier === 2 ? '6' : '7'}px monospace`
           ctx.textAlign = 'center'
@@ -508,7 +589,7 @@ export default function TheoryTree() {
           ctx.fillText(String(node.year), x, y + (node.tier === 2 ? 3 : -1))
         }
 
-        // Person (first name, tier-1 only or selected)
+        // Person label (first name, tier-1 only)
         if (node.tier === 1) {
           ctx.font      = '5px monospace'
           ctx.fillStyle = isSel ? 'rgba(4,4,16,0.55)' : `rgba(240,237,232,${0.28 * mul})`
@@ -516,8 +597,8 @@ export default function TheoryTree() {
         }
         ctx.textAlign = 'left'
 
-        // Title label to the right
-        const title = curLang === 'zh' ? node.title : node.titleEn
+        // Title label to the right of node
+        const title    = curLang === 'zh' ? node.title : node.titleEn
         const fontSize = node.tier === 2 ? 7 : 8.5
         ctx.font      = `${isSel ? 'bold ' : ''}${fontSize}px monospace`
         ctx.fillStyle = isSel ? cfg.color : `rgba(240,237,232,${0.52 * mul})`
