@@ -686,6 +686,37 @@ export const GLOSSARY: GlossaryTerm[] = [
     wikiZh:  '傅里叶变换',
   },
 
+  // ── Astrophysics & Optics ─────────────────────────────────────────────────
+  {
+    id:      'dark-matter',
+    zh:      '暗物质',
+    en:      'Dark Matter',
+    defZh:   '一种不发光、不与电磁辐射相互作用、但通过引力效应可被观测的神秘物质，占宇宙总物质的约 85%。其存在的证据包括：星系旋转曲线异常、引力透镜映射、宇宙大尺度结构。候选粒子包括 WIMP、轴子等，目前尚未在实验室中直接探测到。',
+    defEn:   'A non-luminous form of matter that neither emits nor absorbs light but reveals itself through gravitational effects, comprising ≈85% of all matter. Evidence: anomalous galaxy rotation curves, gravitational lensing maps, large-scale structure. Particle candidates include WIMPs and axions; none yet directly detected.',
+    wikiEn:  'Dark_matter',
+    wikiZh:  '暗物质',
+  },
+  {
+    id:      'photon',
+    zh:      '光子',
+    en:      'Photon',
+    defZh:   '电磁场的量子，是传递电磁力的规范玻色子（自旋 = 1）。光子静止质量为零，以光速 c 传播，携带能量 E = hν 和动量 p = hν/c。光子遵循玻色–爱因斯坦统计，是激光、太阳能、光通信等技术的基础量子。',
+    defEn:   'The quantum of the electromagnetic field and the gauge boson of electromagnetism (spin-1, zero rest mass), travelling at c with energy E = hν and momentum p = hν/c. Photons obey Bose–Einstein statistics, enabling stimulated emission in lasers. The photoelectric effect — explained by Einstein via photons in 1905 — launched the quantum era.',
+    formula: 'E = hν = ħω',
+    wikiEn:  'Photon',
+    wikiZh:  '光子',
+  },
+  {
+    id:      'mean-free-path',
+    zh:      '平均自由程',
+    en:      'Mean Free Path',
+    defZh:   '气体分子相邻两次碰撞之间平均走过的距离：λ = 1/(√2 nσ)，其中 n 为数密度，σ 为碰撞截面。平均自由程决定了气体的输运性质（黏度、热导率、扩散系数）。在布朗运动中，气体分子平均自由程远小于花粉颗粒尺寸，使碰撞呈现连续随机激励的特征。',
+    defEn:   'The average distance a gas molecule travels between successive collisions: λ = 1/(√2 nσ), where n is number density and σ is the collision cross-section. The mean free path governs transport properties (viscosity, thermal conductivity, diffusion coefficient). For Brownian motion, λ ≪ pollen-grain size, making molecular kicks appear as a continuous random force.',
+    formula: 'λ = 1/(√2 nσ)',
+    wikiEn:  'Mean_free_path',
+    wikiZh:  '平均自由程',
+  },
+
 ] // end of GLOSSARY array
 
 export const GLOSSARY_MAP: Record<string, GlossaryTerm> =
