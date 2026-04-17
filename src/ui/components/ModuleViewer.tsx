@@ -375,12 +375,13 @@ export default function ModuleViewer({ mod }: Props) {
         {running ? '⏸ Pause' : '▶ Resume'}
       </button>
 
-      {/* ── Info button — top-left corner ── */}
+      {/* ── Info button — sits right of the hamburger (which occupies top-4 left-4) ── */}
       <button
         onClick={() => setInfoOpen(true)}
-        className="absolute top-4 left-4 z-10 w-6 h-6 flex items-center justify-center font-mono text-[9px] text-[#f0ede8]/28 hover:text-[#f0ede8]/65 border border-[#f0ede8]/12 hover:border-[#f0ede8]/30 transition-colors duration-300"
+        className="absolute top-4 left-12 z-20 h-7 px-2.5 flex items-center gap-1.5 font-mono text-[9px] tracking-[0.12em] text-[#f0ede8]/45 hover:text-[#f0ede8]/80 border border-[#f0ede8]/18 hover:border-[#c8955a]/50 hover:text-[#c8955a]/80 transition-colors duration-300 uppercase"
       >
-        ?
+        <span className="text-[10px] leading-none">ⓘ</span>
+        <span>{lang === 'zh' ? '解释' : 'Info'}</span>
       </button>
 
       {/* ── Info / Explanation popup ── */}
