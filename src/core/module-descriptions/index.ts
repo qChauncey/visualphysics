@@ -52,16 +52,16 @@ export const MODULE_DESCRIPTIONS: Record<string, ModuleDescription> = {
 
   'space-scale': {
     whatYouSee: {
-      zh: '从亚原子尺度到可观测宇宙的连续缩放之旅。对数刻度滑块控制观察尺度，天体按相对尺寸排列，展示从质子（10⁻¹⁵ m）到宇宙网络（10²⁶ m）共 41 个数量级的跨度。',
-      en: 'A continuous zoom from subatomic scales to the observable universe. A logarithmic slider controls the viewing scale, arranging bodies by relative size — spanning 41 orders of magnitude from the proton (10⁻¹⁵ m) to the cosmic web (10²⁶ m).',
+      zh: '用滚轮从中子星（直径约 20 km）一路缩放到可观测宇宙（直径 880 亿光年），跨越 22 个数量级。任意时刻画面中只有尺寸相近的天体可见，随着缩放出现与消失：行星群、恒星序列、超巨星、旋涡星系、本星系群，直到整个可观测宇宙。左上角实时显示当前聚焦天体及其真实直径，底部比例尺随尺度切换单位（km → AU → 光年 → 百万光年）。',
+      en: 'Scroll to zoom continuously from a neutron star (diameter ~20 km) to the observable universe (880 billion ly across) — 22 orders of magnitude. At any zoom level only objects of a similar real size are visible; planets, stellar sequences, supergiant stars, spiral galaxies, and galaxy clusters each appear in turn. The HUD shows the focused object with its true diameter; the scale bar switches units live (km → AU → ly → Mly).',
     },
     physics: {
-      zh: '宇宙各结构跨越的尺度范围远超人类直觉。[引力势|grav-potential]主导了行星到宇宙大尺度结构的形成，而核力主导了 10⁻¹⁵ m 尺度。宇宙加速膨胀由[暗能量|dark-energy]驱动（占总能量 68%），可观测宇宙的大小由[哈勃常数|hubble-constant]决定。对数尺度是唯一能在有限屏幕上呈现如此巨大跨度的方式。',
-      en: 'The universe\'s structures span scales far beyond human intuition. [Gravitational potential|grav-potential] governs formation from planets to cosmic webs; nuclear forces dominate at 10⁻¹⁵ m. The accelerating expansion is driven by [dark energy|dark-energy] (68% of the total energy budget), and the size of the observable universe is set by the [Hubble constant|hubble-constant]. A logarithmic scale is the only way to represent this range on a finite screen.',
+      zh: '宇宙各结构跨越的尺度远超人类直觉，只有对数坐标才能在有限屏幕上呈现。[引力势|grav-potential]主导了从行星到宇宙大尺度结构的形成；[暗物质|dark-matter]提供了星系和星系团的引力骨架；宇宙加速膨胀由[暗能量|dark-energy]驱动（占总能量约 68%）；可观测宇宙的大小取决于宇宙年龄与[哈勃常数|hubble-constant]之积。各尺度之间的跳跃往往大得令人震惊：银河系直径是太阳的 10¹¹ 倍，可观测宇宙又是银河系的 10⁶ 倍。',
+      en: 'The universe\'s structures span scales that defy intuition — only a logarithmic axis can represent them on screen. [Gravitational potential|grav-potential] governs structure from planets to cosmic webs; [dark matter|dark-matter] supplies the gravitational scaffolding for galaxies and clusters; accelerating expansion is driven by [dark energy|dark-energy] (~68% of the total energy budget); and the observable radius is set by the product of the cosmic age and the [Hubble constant|hubble-constant]. The leaps between scales are staggering: the Milky Way is 10¹¹ × the Sun\'s diameter; the observable universe is another 10⁶ × larger.',
     },
     history: {
-      zh: 'Charles and Ray Eames 于 1977 年制作的纪录片《十的次方》（Powers of Ten）是对宇宙尺度最经典的可视化之一，从人到宇宙再回到细胞核用了不到 10 分钟，深刻影响了此后的科普教育。',
-      en: 'Charles and Ray Eames\' 1977 film "Powers of Ten" is the most iconic scale visualisation — journeying from a human to the edge of the universe and back to a cell nucleus in under ten minutes. It profoundly shaped how scale is taught in science education.',
+      zh: 'Charles 与 Ray Eames 于 1977 年制作的《十的次方》（Powers of Ten）是宇宙尺度可视化的开山之作，九分钟内从野餐毯出发抵达宇宙边缘再回到原子核，深刻影响了此后数十年的科普教育。[红移|redshift]观测与宇宙微波背景辐射证实了宇宙的有限性与年龄（约 138 亿年），这也为可观测宇宙的边界划定了理论上限。',
+      en: 'Charles and Ray Eames\' 1977 film "Powers of Ten" pioneered scale visualisation — travelling from a picnic blanket to the edge of the universe and back to an atomic nucleus in nine minutes, shaping science education for decades. [Redshift|redshift] observations and the cosmic microwave background confirmed the finite age (~13.8 Gyr) and size of the observable universe, setting the theoretical ceiling on what we can ever see.',
     },
   },
 
